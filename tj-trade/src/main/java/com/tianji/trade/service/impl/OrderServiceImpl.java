@@ -286,7 +286,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             // 不一致，说明不是当前用户的订单，结束
             throw new BadRequestException("不能删除他人订单");
         }
-
         // 4.删除订单
         boolean success = removeById(id);
         if (!success) {
