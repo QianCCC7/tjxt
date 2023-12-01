@@ -38,7 +38,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.tianji.common.constants.ErrorInfo.Msg.OPERATE_FAILED;
@@ -282,8 +281,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             return;
         }
         // 3.判断订单所属用户与当前登录用户是否一致
-        // boolean f = Objects.equals(userId, order.getUserId());
-        if(!userId.equals(order.getUserId())) {
+        if(userId != order.getUserId()){
             // 不一致，说明不是当前用户的订单，结束
             throw new BadRequestException("不能删除他人订单");
         }
