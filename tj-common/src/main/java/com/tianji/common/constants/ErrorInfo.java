@@ -4,7 +4,7 @@ public interface ErrorInfo {
 
     interface Msg {
         String OK = "OK";
-       String INVALID_VERIFY_CODE = "验证码错误";
+        String INVALID_VERIFY_CODE = "验证码错误";
 
 
         String SERVER_INTER_ERROR = "服务器内部错误";

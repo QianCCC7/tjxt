@@ -15,7 +15,7 @@ public class UserInfoInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // 1.尝试获取头信息中的用户信息
         String authorization = request.getHeader(JwtConstants.USER_HEADER);
-        // 2.判断是否为空
+        // 2.判断是否为空，因为有些业务不需要用户信息，直接放行
         if (authorization == null) {
             return true;
         }
