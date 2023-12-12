@@ -33,7 +33,7 @@ public class LearningLessonVO {
     @ApiModelProperty("总已学习章节数")
     private Integer learnedSections;
 
-    @ApiModelProperty("总已报名课程数")
+    @ApiModelProperty("课表中课程总数")
     private Integer courseAmount;
 
     @ApiModelProperty("课程购买时间")

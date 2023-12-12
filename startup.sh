@@ -28,7 +28,7 @@ while getopts "c:n:d:p:o:a:" opt; do
             [ -n "$OPTARG" ] && DEBUG_PORT=$OPTARG
           ;;
          ?)
-            echo "unkonw argument"
+            echo "unknow argument"
             exit 1
           ;;
     esac

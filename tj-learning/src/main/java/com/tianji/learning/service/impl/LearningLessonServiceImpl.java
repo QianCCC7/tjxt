@@ -2,13 +2,18 @@ package com.tianji.learning.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.api.client.course.CatalogueClient;
 import com.tianji.api.client.course.CourseClient;
+import com.tianji.api.dto.course.CataSimpleInfoDTO;
+import com.tianji.api.dto.course.CourseFullInfoDTO;
 import com.tianji.api.dto.course.CourseSimpleInfoDTO;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.domain.query.PageQuery;
 import com.tianji.common.exceptions.BadRequestException;
+import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
 import com.tianji.learning.domain.vo.LearningLessonVO;
+import com.tianji.learning.enums.LessonStatus;
 import com.tianji.learning.service.ILearningLessonService;
 import com.tianji.learning.domain.pojo.LearningLesson;
 import com.tianji.learning.mapper.LearningLessonMapper;
@@ -35,6 +40,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper, LearningLesson> implements ILearningLessonService {
     private final CourseClient courseClient;
+    private final CatalogueClient catalogueClient;
 
     /**
      * 批量添加课程至课程表
@@ -81,7 +87,6 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
      */
     @Override
     public PageDTO<LearningLessonVO> queryMyLessons(PageQuery pageQuery) {
-        log.debug("已进入该方法");
         // 1. 获取当前用户
         Long userId = UserContext.getUser();
         // select * from learning_lesson where user_id = #{userId} order by latest_learn_time limit 0,5
@@ -117,6 +122,47 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
             list.add(lessonVO);
         }
         return PageDTO.of(page, list);// 封装好了分页参数
-        // return null;
+    }
+
+    /**
+     * 查询正在学习的课程
+     * @return
+     */
+    @Override
+    public LearningLessonVO queryMyCurrentLesson() {
+        // 1. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 2. 查询最后一条最近学习的课程
+        // select * from learning_lesson where user_id = #{userId} and status = 1
+        // order by latest_learn_time desc limit 1
+        LearningLesson lastLearningLesson = lambdaQuery()
+                .eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getStatus, LessonStatus.LEARNING.getValue()) // 为1代表学习中
+                .orderByDesc(LearningLesson::getLatestLearnTime) // 最后学习的一门课
+                .last("limit 1")
+                .one();
+        if (Objects.isNull(lastLearningLesson)) {
+            return null;
+        }
+        // 3. 复制相同属性到 LearningLessonVO
+        LearningLessonVO lessonVO = new LearningLessonVO();
+        BeanUtils.copyProperties(lastLearningLesson, lessonVO);
+        // 4. 查询课程其他信息(课程名称，课程封面以及总课时数)
+        CourseFullInfoDTO courseInfo = courseClient.getCourseInfoById(lastLearningLesson.getCourseId(), false, false);
+        lessonVO.setCourseName(courseInfo.getName());
+        lessonVO.setCourseCoverUrl(courseInfo.getCoverUrl());
+        lessonVO.setSections(courseInfo.getSectionNum());
+        // 5. 统计课表中课程总数量
+        Integer courseAmount = lambdaQuery().eq(LearningLesson::getUserId, userId).count();
+        lessonVO.setCourseAmount(courseAmount);
+        // 6. 查询最近一次学习的小结名称和小结序号，通过 catalogueClient查询目录的简单信息，包含小结名称以及小结序号
+        List<CataSimpleInfoDTO> catalogueInfos =
+                catalogueClient.batchQueryCatalogue(Collections.singletonList(lastLearningLesson.getLatestSectionId()));
+        if (!CollUtils.isEmpty(catalogueInfos)) {
+            CataSimpleInfoDTO catalogueInfo = catalogueInfos.get(0);
+            lessonVO.setLatestSectionName(catalogueInfo.getName());
+            lessonVO.setLatestSectionIndex(catalogueInfo.getCIndex());
+        }
+        return lessonVO;
     }
 }
