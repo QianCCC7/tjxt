@@ -94,7 +94,8 @@ public class RefundApplyServiceImpl extends ServiceImpl<RefundApplyMapper, Refun
             throw new BadRequestException(TradeErrorInfo.FREE_COURSE_CANNOT_REFUND);
         }
         // 2.查询订单
-        Order order = orderMapper.getById(detail.getOrderId());
+        Order order = orderMapper.selectById(detail.getOrderId());
+        // Order order = orderMapper.getById(detail.getOrderId());
         if(order == null){
             throw new BadRequestException(TradeErrorInfo.ORDER_NOT_EXISTS);
         }
