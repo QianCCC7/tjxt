@@ -145,7 +145,7 @@ public class OrderDetailServiceImpl extends ServiceImpl<OrderDetailMapper, Order
             throw new BadRequestException(ORDER_NOT_EXISTS);
         }
         // 2.查询对应订单
-        Order order = orderMapper.getById(detail.getOrderId());
+        Order order = orderMapper.selectById(detail.getOrderId());
         if (order == null) {
             throw new BadRequestException(ORDER_NOT_EXISTS);
         }

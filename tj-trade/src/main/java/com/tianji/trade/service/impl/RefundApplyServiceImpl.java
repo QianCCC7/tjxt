@@ -261,7 +261,7 @@ public class RefundApplyServiceImpl extends ServiceImpl<RefundApplyMapper, Refun
         RefundApplyVO vo = BeanUtils.copyBean(apply, RefundApplyVO.class);
 
         // 3.查询订单信息及交易流水
-        Order order = orderMapper.getById(apply.getOrderId());
+        Order order = orderMapper.selectById(apply.getOrderId());
         if (order == null) {
             throw new BadRequestException(TradeErrorInfo.ORDER_NOT_EXISTS);
         }
@@ -391,7 +391,7 @@ public class RefundApplyServiceImpl extends ServiceImpl<RefundApplyMapper, Refun
         RefundApplyVO vo = BeanUtils.copyBean(apply, RefundApplyVO.class);
 
         // 3.查询订单信息
-        Order order = orderMapper.getById(apply.getOrderId());
+        Order order = orderMapper.selectById(apply.getOrderId());
         vo.setPayOrderNo(order.getPayOrderNo());
         vo.setOrderTime(order.getCreateTime());
         vo.setPaySuccessTime(order.getPayTime());

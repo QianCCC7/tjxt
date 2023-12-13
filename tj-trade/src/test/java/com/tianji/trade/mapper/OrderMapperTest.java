@@ -13,7 +13,7 @@ class OrderMapperTest {
 
     @Test
     void getById() {
-        Order order = orderMapper.getById(1L);
+        Order order = orderMapper.selectById(1L);
         System.out.println("order = " + order);
     }
 }
