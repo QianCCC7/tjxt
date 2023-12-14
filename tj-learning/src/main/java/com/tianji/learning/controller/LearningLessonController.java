@@ -52,4 +52,10 @@ public class LearningLessonController {
     public LearningLessonVO queryStatusOfLesson(@PathVariable(value = "courseId") Long courseId) {
         return learningLessonService.queryLessonStatus(courseId);
     }
+
+    @GetMapping("/{courseId}/count")
+    @ApiOperation("统计课程的学习人数")
+    public Integer countLearningLessonByCourse(@PathVariable(value = "courseId") Long courseId) {
+        return learningLessonService.countLearningLessonByCourse(courseId);
+    }
 }

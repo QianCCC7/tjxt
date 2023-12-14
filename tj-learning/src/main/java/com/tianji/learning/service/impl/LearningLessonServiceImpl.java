@@ -128,6 +128,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
 
     /**
      * 查询正在学习的课程
+     *
      * @return
      */
     @Override
@@ -170,6 +171,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
 
     /**
      * 用户退款时，删除课程
+     *
      * @param userId
      * @param courseId
      */
@@ -186,6 +188,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
 
     /**
      * 用户删除已失效的课程
+     *
      * @param courseId
      */
     @Override
@@ -210,6 +213,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
 
     /**
      * 校验当前用户是否可以学习当前课程，即当前课程是否有效
+     *
      * @param courseId
      * @return lessonId，如果是报名了则返回lessonId，否则返回空
      */
@@ -234,6 +238,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
 
     /**
      * 课程详情页用户课表中指定课程的状态动态展示
+     *
      * @param courseId
      * @return
      */
@@ -255,5 +260,26 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
         BeanUtils.copyProperties(lesson, lessonVO);
         log.debug("用户{}的课程{}的状态为{}", userId, courseId, lessonVO.getStatus().getDesc());
         return lessonVO;
+    }
+
+    /**
+     * 统计课程的学习人数
+     *
+     * @param courseId
+     * @return
+     */
+    @Override
+    public Integer countLearningLessonByCourse(Long courseId) {
+        if (Objects.isNull(courseId)) {
+            log.debug("课程{}不存在", courseId);
+            return 0;
+        }
+        return lambdaQuery()
+                .eq(LearningLesson::getCourseId, courseId)
+                .in(LearningLesson::getStatus,
+                        LessonStatus.NOT_BEGIN.getValue(),
+                        LessonStatus.LEARNING.getValue(),
+                        LessonStatus.FINISHED.getValue())
+                .count();
     }
 }
