@@ -46,4 +46,10 @@ public class LearningLessonController {
     public Long isLessonValid(@PathVariable(value = "courseId") Long courseId){
         return learningLessonService.isLessonValid(courseId);
     }
+
+    @GetMapping("/{courseId}")
+    @ApiOperation("课程详情页用户课表中指定课程的状态动态展示")
+    public LearningLessonVO queryStatusOfLesson(@PathVariable(value = "courseId") Long courseId) {
+        return learningLessonService.queryLessonStatus(courseId);
+    }
 }

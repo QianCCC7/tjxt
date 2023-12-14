@@ -231,4 +231,29 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
         log.debug("用户{}的课程{}有效", userId, courseId);
         return validLesson.getId();
     }
+
+    /**
+     * 课程详情页用户课表中指定课程的状态动态展示
+     * @param courseId
+     * @return
+     */
+    @Override
+    public LearningLessonVO queryLessonStatus(Long courseId) {
+        // 1. 查询当前登录用户
+        Long userId = UserContext.getUser();
+        // 2. 查询当前用户是否有指定课程
+        LearningLesson lesson = lambdaQuery()
+                .eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getCourseId, courseId).one();
+        // 2.1 用户没有指定课程，那么返回 null，前端显示立即购买或者加入购物车等
+        if (Objects.isNull(lesson)) {
+            log.debug("用户{}没有指定课程{}", userId, courseId);
+            return null;
+        }
+        // 2.2 用户拥有课程，封装课程信息并返回
+        LearningLessonVO lessonVO = new LearningLessonVO();
+        BeanUtils.copyProperties(lesson, lessonVO);
+        log.debug("用户{}的课程{}的状态为{}", userId, courseId, lessonVO.getStatus().getDesc());
+        return lessonVO;
+    }
 }
