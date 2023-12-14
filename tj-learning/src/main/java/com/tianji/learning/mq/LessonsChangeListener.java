@@ -47,4 +47,27 @@ public class LessonsChangeListener {
                 orderBasicDTO.getUserId(), orderBasicDTO.getOrderId(), orderBasicDTO.getCourseIds());
         learningLessonService.addUserLessons(orderBasicDTO.getUserId(), orderBasicDTO.getCourseIds());
     }
+
+    /**
+     * 监听到退款消息，删除课程
+     */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "learning.lesson.refund.queue", durable = "true"),
+            exchange = @Exchange(name = MqConstants.Exchange.ORDER_EXCHANGE, type = ExchangeTypes.TOPIC),
+            key = MqConstants.Key.ORDER_REFUND_KEY
+    ))
+    public void listenLessonRefund(OrderBasicDTO orderBasicDTO) {
+        // 1. 健壮性处理
+        if (Objects.isNull(orderBasicDTO)
+                || Objects.isNull(orderBasicDTO.getOrderId())
+                || Objects.isNull(orderBasicDTO.getUserId())
+                || CollectionUtils.isEmpty(orderBasicDTO.getCourseIds())) {
+            log.error("接收到的MQ消息有误，订单数据为空");
+            return;
+        }
+        // 2. 删除课程
+        log.debug("监听到用户要退款{}的订单{},需要将课程{}从课表中删除",
+                orderBasicDTO.getUserId(), orderBasicDTO.getOrderId(), orderBasicDTO.getCourseIds());
+        learningLessonService.removeUserLessons(orderBasicDTO.getUserId(), orderBasicDTO.getCourseIds().get(0));
+    }
 }

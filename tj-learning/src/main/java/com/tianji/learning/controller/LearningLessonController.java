@@ -7,9 +7,7 @@ import com.tianji.learning.service.ILearningLessonService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 学生课程表 前端控制器
@@ -37,4 +35,15 @@ public class LearningLessonController {
         return learningLessonService.queryMyCurrentLesson();
     }
 
+    @DeleteMapping("/{courseId}")
+    @ApiOperation("用户删除已失效的课程")
+    public void deleteInvalidByCourseId(@PathVariable(value = "courseId") Long courseId) {
+        learningLessonService.deleteInvalidByCourseId(courseId);
+    }
+
+    @GetMapping("/{courseId}/valid")
+    @ApiOperation("校验当前用户是否可以学习当前课程，即当前课程是否有效")
+    public Long isLessonValid(@PathVariable(value = "courseId") Long courseId){
+        return learningLessonService.isLessonValid(courseId);
+    }
 }

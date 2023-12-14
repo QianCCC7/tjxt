@@ -1,5 +1,6 @@
 package com.tianji.learning.service.impl;
 
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.course.CatalogueClient;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper, LearningLesson> implements ILearningLessonService {
+
     private final CourseClient courseClient;
     private final CatalogueClient catalogueClient;
 
@@ -51,13 +53,13 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
     @Override
     @Transactional
     public void addUserLessons(Long userId, List<Long> courseIds) {
-        // 1. 查询课程有效期
+        // 1. 查询课程简单信息，包含课程有效期等
         List<CourseSimpleInfoDTO> coursesInfoList = courseClient.getSimpleInfoList(courseIds);
         if (CollectionUtils.isEmpty(coursesInfoList)) {
             log.error("课程信息不存在,无法添加到课表");
             return;
         }
-        // 2. 循环遍历，处理数据
+        // 2. 循环遍历，封装数据
         List<LearningLesson> list = new ArrayList<>(coursesInfoList.size());
         for (CourseSimpleInfoDTO course : coursesInfoList) {
             LearningLesson learningLesson = new LearningLesson();
@@ -164,5 +166,69 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
             lessonVO.setLatestSectionIndex(catalogueInfo.getCIndex());
         }
         return lessonVO;
+    }
+
+    /**
+     * 用户退款时，删除课程
+     * @param userId
+     * @param courseId
+     */
+    @Override
+    @Transactional
+    public void removeUserLessons(Long userId, Long courseId) {
+        LambdaQueryWrapper<LearningLesson> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper
+                .eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getCourseId, courseId);
+        log.debug("删除指定课表开始");
+        remove(queryWrapper);
+    }
+
+    /**
+     * 用户删除已失效的课程
+     * @param courseId
+     */
+    @Override
+    @Transactional
+    public void deleteInvalidByCourseId(Long courseId) {
+        if (Objects.isNull(courseId)) {
+            throw new BadRequestException("课程不存在");
+        }
+        // 1. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 2. 查询到要删的课程
+        LearningLesson lesson = lambdaQuery().eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getCourseId, courseId)
+                .eq(LearningLesson::getStatus, LessonStatus.EXPIRED)
+                .one();
+        if (Objects.isNull(lesson)) {
+            throw new BadRequestException("该课程不是已失效的课程");
+        }
+        log.info("用户{}要删除的课程ID为{}的课程", userId, lesson.getCourseId());
+        removeById(lesson.getId());
+    }
+
+    /**
+     * 校验当前用户是否可以学习当前课程，即当前课程是否有效
+     * @param courseId
+     * @return lessonId，如果是报名了则返回lessonId，否则返回空
+     */
+    @Override
+    public Long isLessonValid(Long courseId) {
+        if (Objects.isNull(courseId)) return null;
+        // 1. 获取当前登录用户的 ID
+        Long userId = UserContext.getUser();
+        // 2. 查询用户课表中是否有该课程
+        LearningLesson validLesson = lambdaQuery()
+                .eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getCourseId, courseId)
+                .ne(LearningLesson::getStatus, LessonStatus.EXPIRED.getValue()).one();
+
+        if (Objects.isNull(validLesson)) {
+            log.debug("用户{}没有该课程{}，或者课程已失效", userId, courseId);
+            return null;
+        }
+        log.debug("用户{}的课程{}有效", userId, courseId);
+        return validLesson.getId();
     }
 }
