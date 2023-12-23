@@ -1,6 +1,5 @@
 package com.tianji.learning.service.impl;
 
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.course.CatalogueClient;
@@ -78,7 +77,6 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
         // 3. 批量新增数据
         log.debug("新增用户课表开始");
         saveBatch(list);
-        log.debug("新增用户课表成功");
     }
 
     /**
@@ -237,7 +235,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
     }
 
     /**
-     * 课程详情页用户课表中指定课程的状态动态展示
+     * 课程详情页用户课表中指定课程的状态动态展示，即查询用户课程的学习状态
      *
      * @param courseId
      * @return
@@ -247,9 +245,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
         // 1. 查询当前登录用户
         Long userId = UserContext.getUser();
         // 2. 查询当前用户是否有指定课程
-        LearningLesson lesson = lambdaQuery()
-                .eq(LearningLesson::getUserId, userId)
-                .eq(LearningLesson::getCourseId, courseId).one();
+        LearningLesson lesson = queryLessonByUserIdAndCourseId(userId, courseId);
         // 2.1 用户没有指定课程，那么返回 null，前端显示立即购买或者加入购物车等
         if (Objects.isNull(lesson)) {
             log.debug("用户{}没有指定课程{}", userId, courseId);
@@ -260,6 +256,19 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
         BeanUtils.copyProperties(lesson, lessonVO);
         log.debug("用户{}的课程{}的状态为{}", userId, courseId, lessonVO.getStatus().getDesc());
         return lessonVO;
+    }
+
+    /**
+     * 根据用户 Id和课程 Id查询课表信息
+     * @param userId
+     * @param courseId
+     * @return
+     */
+    @Override
+    public LearningLesson queryLessonByUserIdAndCourseId(Long userId, Long courseId) {
+        return lambdaQuery()
+                .eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getCourseId, courseId).one();
     }
 
     /**

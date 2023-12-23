@@ -48,7 +48,7 @@ public class LearningLessonController {
     }
 
     @GetMapping("/{courseId}")
-    @ApiOperation("课程详情页用户课表中指定课程的状态动态展示")
+    @ApiOperation("课程详情页用户课表中指定课程的状态动态展示，即查询用户课程的学习状态")
     public LearningLessonVO queryStatusOfLesson(@PathVariable(value = "courseId") Long courseId) {
         return learningLessonService.queryLessonStatus(courseId);
     }
