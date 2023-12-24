@@ -51,4 +51,11 @@ public interface LearningLessonMapper extends BaseMapper<LearningLesson> {
      * @return 更新数量
      */
     int updateByPrimaryKey(LearningLesson record);
+
+    /**
+     * 查询用户本周学习计划总数
+     * @param userId
+     * @return
+     */
+    Integer queryTotalPlans(Long userId);
 }

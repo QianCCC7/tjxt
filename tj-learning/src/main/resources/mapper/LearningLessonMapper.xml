@@ -30,6 +30,14 @@
     where id = #{id,jdbcType=BIGINT}
   </select>
 
+  <select id="queryTotalPlans" resultType="java.lang.Integer">
+    select sum(week_freq)
+    from learning_lesson
+    where user_id = #{userId}
+    and plan_status = 1
+    and status in (0, 1)
+  </select>
+
   <insert id="insert" parameterType="com.tianji.learning.domain.pojo.LearningLesson">
     <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Long">
       SELECT LAST_INSERT_ID()

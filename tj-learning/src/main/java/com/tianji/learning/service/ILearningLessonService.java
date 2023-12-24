@@ -6,6 +6,7 @@ import com.tianji.learning.domain.dto.LearningPlanDTO;
 import com.tianji.learning.domain.pojo.LearningLesson;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.tianji.learning.domain.vo.LearningLessonVO;
+import com.tianji.learning.domain.vo.LearningPlanPageVO;
 
 import java.util.List;
 
@@ -36,4 +37,6 @@ public interface ILearningLessonService extends IService<LearningLesson> {
     LearningLesson queryLessonByUserIdAndCourseId(Long userId, Long courseId);
 
     void createLearningPlan(LearningPlanDTO planDTO);
+
+    LearningPlanPageVO queryMyPlans(PageQuery pageQuery);
 }

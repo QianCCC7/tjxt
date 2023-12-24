@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.course.CatalogueClient;
 import com.tianji.api.client.course.CourseClient;
+import com.tianji.api.dto.IdAndNumDTO;
 import com.tianji.api.dto.course.CataSimpleInfoDTO;
 import com.tianji.api.dto.course.CourseFullInfoDTO;
 import com.tianji.api.dto.course.CourseSimpleInfoDTO;
@@ -11,11 +12,16 @@ import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.domain.query.PageQuery;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.CollUtils;
+import com.tianji.common.utils.DateUtils;
 import com.tianji.common.utils.UserContext;
 import com.tianji.learning.domain.dto.LearningPlanDTO;
+import com.tianji.learning.domain.pojo.LearningRecord;
 import com.tianji.learning.domain.vo.LearningLessonVO;
+import com.tianji.learning.domain.vo.LearningPlanPageVO;
+import com.tianji.learning.domain.vo.LearningPlanVO;
 import com.tianji.learning.enums.LessonStatus;
 import com.tianji.learning.enums.PlanStatus;
+import com.tianji.learning.mapper.LearningRecordMapper;
 import com.tianji.learning.service.ILearningLessonService;
 import com.tianji.learning.domain.pojo.LearningLesson;
 import com.tianji.learning.mapper.LearningLessonMapper;
@@ -27,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +51,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
 
     private final CourseClient courseClient;
     private final CatalogueClient catalogueClient;
+    private final LearningRecordMapper recordMapper;
 
     /**
      * 批量添加课程至课程表
@@ -101,15 +109,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
             return PageDTO.empty(page);// 返回一个空的课程信息
         }
         // 3.查询课程信息
-        // 3.1 获取课表中所有课程的 ID
-        Set<Long> courseIds = records.stream().map(LearningLesson::getCourseId).collect(Collectors.toSet());
-        // 3.2 根据所有课程 ID查询所有课程信息，用于封装 LearningLessonVO
-        List<CourseSimpleInfoDTO> coursesInfoList = courseClient.getSimpleInfoList(courseIds);
-        if (CollectionUtils.isEmpty(coursesInfoList)) {
-            throw new BadRequestException("课程信息不存在！");
-        }
-        // 3.3 将课程集合处理为Map，方便下面封装数据时，通过课程ID获取到课程信息
-        Map<Long, CourseSimpleInfoDTO> cMap = coursesInfoList.stream().collect(Collectors.toMap(CourseSimpleInfoDTO::getId, c -> c));
+        Map<Long, CourseSimpleInfoDTO> cMap = queryCourseSimpleInfoList(records);
         // 4.封装查询到的课表数据为 LearningLessonVO
         List<LearningLessonVO> list = new ArrayList<>(records.size());
         for (LearningLesson record : records) {
@@ -124,6 +124,18 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
             list.add(lessonVO);
         }
         return PageDTO.of(page, list);// 封装好了分页参数
+    }
+    // 通过课程 ID集合批量查询课程信息并封装为 Map
+    private Map<Long, CourseSimpleInfoDTO> queryCourseSimpleInfoList(List<LearningLesson> records) {
+        // 获取课表中所有课程的 ID
+        Set<Long> courseIds = records.stream().map(LearningLesson::getCourseId).collect(Collectors.toSet());
+        // 根据所有课程 ID查询所有课程信息，用于封装 LearningLessonVO
+        List<CourseSimpleInfoDTO> coursesInfoList = courseClient.getSimpleInfoList(courseIds);
+        if (CollectionUtils.isEmpty(coursesInfoList)) {
+            throw new BadRequestException("课程信息不存在！");
+        }
+        // 将课程集合处理为Map，方便下面封装数据时，通过课程ID获取到课程信息
+        return coursesInfoList.stream().collect(Collectors.toMap(CourseSimpleInfoDTO::getId, c -> c));
     }
 
     /**
@@ -315,5 +327,68 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
             newLesson.setPlanStatus(PlanStatus.PLAN_RUNNING);
         }
         updateById(newLesson);
+    }
+
+    /**
+     * 查询我的学习计划
+     * @param pageQuery
+     * @return
+     */
+    @Override
+    public LearningPlanPageVO queryMyPlans(PageQuery pageQuery) {
+        LearningPlanPageVO planPageVO = new LearningPlanPageVO();
+        // 1. 获取当前用户
+        Long userId = UserContext.getUser();
+        // 2. 获取本周起始时间
+        LocalDate now = LocalDate.now();
+        LocalDateTime beginTime = DateUtils.getWeekBeginTime(now);
+        LocalDateTime endTime = DateUtils.getWeekEndTime(now);
+        // 3. 查询总的统计数据
+        // 3.1 本周总的已学习小结数量
+        Integer weekFinishedCount = recordMapper.selectCount(new LambdaQueryWrapper<LearningRecord>()
+                .eq(LearningRecord::getUserId, userId)
+                .eq(LearningRecord::getFinished, true)
+                .gt(LearningRecord::getFinishTime, beginTime)
+                .gt(LearningRecord::getFinishTime, endTime)
+        );
+        planPageVO.setWeekFinished(weekFinishedCount);
+        // 3.2 本周总的计划学习小结数量
+        Integer weekTotalPlansCount = getBaseMapper().queryTotalPlans(userId);
+        planPageVO.setWeekTotalPlan(weekTotalPlansCount);
+        // TODO 3.3 本周学习积分
+
+        // 4. 查询分页数据
+        // 4.1 分页查询计划中的课表信息以及学习计划信息
+        Page<LearningLesson> page = lambdaQuery()
+                .eq(LearningLesson::getUserId, userId)
+                .eq(LearningLesson::getPlanStatus, PlanStatus.PLAN_RUNNING)
+                .in(LearningLesson::getStatus, LessonStatus.NOT_BEGIN, LessonStatus.LEARNING)
+                .page(pageQuery.toMpPage("latest_learn_time", false));
+        List<LearningLesson> records = page.getRecords();
+        if (CollectionUtils.isEmpty(records)) {
+            return planPageVO.emptyPage(page);
+        }
+        // 4.2 查询课表对应的课程信息
+        Map<Long, CourseSimpleInfoDTO> cMap = queryCourseSimpleInfoList(records);
+        // 4.3 统计每个课程本周已学习小结数量
+        List<IdAndNumDTO> list = recordMapper.learnedSectionsCount(userId, beginTime, endTime);
+        Map<Long, Integer> map = IdAndNumDTO.toMap(list);// 封装为 map，可以快速找出某个课程本周已学习的小结数量
+        // 4.4 封装VO
+        List<LearningPlanVO> result = new ArrayList<>(records.size());
+        for (LearningLesson record : records) {
+            // 4.4.1 拷贝属性
+            LearningPlanVO vo = com.tianji.common.utils.BeanUtils.copyBean(record, LearningPlanVO.class);
+            // 4.4.2 填充课程详细信息
+            CourseSimpleInfoDTO courseSimpleInfoDTO = cMap.get(record.getCourseId());
+            if (!Objects.isNull(courseSimpleInfoDTO)) {
+                vo.setCourseName(courseSimpleInfoDTO.getName());
+                vo.setSections(courseSimpleInfoDTO.getSectionNum());
+            }
+            // 4.4.3 每个课程本周已学习小节数量
+            vo.setWeekLearnedSections(map.getOrDefault(record.getId(), 0));
+            result.add(vo);
+        }
+
+        return planPageVO.pageInfo(page.getTotal(), page.getPages(), result);
     }
 }
