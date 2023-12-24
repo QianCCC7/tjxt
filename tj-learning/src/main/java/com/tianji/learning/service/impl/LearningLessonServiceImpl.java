@@ -12,8 +12,10 @@ import com.tianji.common.domain.query.PageQuery;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
+import com.tianji.learning.domain.dto.LearningPlanDTO;
 import com.tianji.learning.domain.vo.LearningLessonVO;
 import com.tianji.learning.enums.LessonStatus;
+import com.tianji.learning.enums.PlanStatus;
 import com.tianji.learning.service.ILearningLessonService;
 import com.tianji.learning.domain.pojo.LearningLesson;
 import com.tianji.learning.mapper.LearningLessonMapper;
@@ -131,6 +133,7 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
      */
     @Override
     public LearningLessonVO queryMyCurrentLesson() {
+        log.debug("正在查询");
         // 1. 获取当前登录用户
         Long userId = UserContext.getUser();
         // 2. 查询最后一条最近学习的课程
@@ -290,5 +293,27 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
                         LessonStatus.LEARNING.getValue(),
                         LessonStatus.FINISHED.getValue())
                 .count();
+    }
+
+    /**
+     * 创建及修改学习计划
+     * @param planDTO
+     */
+    @Override
+    public void createLearningPlan(LearningPlanDTO planDTO) {
+        // 1. 查询登录用户
+        Long userId = UserContext.getUser();
+        // 2. 查询课表有关数据
+        LearningLesson lesson = queryLessonByUserIdAndCourseId(userId, planDTO.getCourseId());
+        if (Objects.isNull(lesson)) {
+            throw new BadRequestException("课程信息不存在");// 课程不存在，无法创建学习计划
+        }
+        LearningLesson newLesson = new LearningLesson();
+        newLesson.setId(lesson.getId());
+        newLesson.setWeekFreq(planDTO.getFreq());
+        if (lesson.getPlanStatus() == PlanStatus.NO_PLAN) {
+            newLesson.setPlanStatus(PlanStatus.PLAN_RUNNING);
+        }
+        updateById(newLesson);
     }
 }

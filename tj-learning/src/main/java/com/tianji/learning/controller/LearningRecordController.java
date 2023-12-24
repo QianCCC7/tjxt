@@ -38,4 +38,6 @@ public class LearningRecordController {
     public void addLearningRecord(@RequestBody LearningRecordFormDTO learningRecordFormDTO) {
         recordService.addLearningRecord(learningRecordFormDTO);
     }
+
+
 }
