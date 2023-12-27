@@ -140,6 +140,7 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
         if (!suc) {
             throw new DbException("新增学习记录失败！");
         }
+        // 清理缓存
         taskHandler.clearRecordCache(formDTO.getLessonId(), formDTO.getSectionId());
         return true;
     }
@@ -148,7 +149,7 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
     private LearningRecord queryOldRecord(Long lessonId, Long sectionId) {
         // 1. 有限查询缓存
         LearningRecord record = taskHandler.readRecordCache(lessonId, sectionId);
-        if (!Objects.isNull(record)) {
+        if (!Objects.isNull(record)) {// 缓存命中，直接返回缓存中查询到的数据
             return record;
         }
         // 2. 缓存中没有数据，再查询数据库

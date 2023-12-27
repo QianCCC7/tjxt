@@ -132,7 +132,7 @@ public class LearningRecordDelayTaskHandler {
             String key = StringUtils.format(RECORD_KEY_TEMPLATE, record.getLessonId());
             redisTemplate.opsForHash().put(key, record.getSectionId().toString(), data);
             // 3. 设置过期时间
-            redisTemplate.expire(key, Duration.ofSeconds(1));
+            redisTemplate.expire(key, Duration.ofMinutes(1));
         } catch (Exception e) {
             log.error("添加学习记录的缓存数据缓存失败", e);
         }
@@ -152,7 +152,7 @@ public class LearningRecordDelayTaskHandler {
             if (Objects.isNull(cacheData)) {
                 return null;
             }
-            // 2. 数据转换
+            // 2. JSON数据转换
             return JsonUtils.toBean(cacheData.toString(), LearningRecord.class);
         } catch (Exception e) {
             log.error("缓存数据读取异常", e);
