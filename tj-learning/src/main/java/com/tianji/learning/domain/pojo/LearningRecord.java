@@ -79,6 +79,4 @@ public class LearningRecord implements Serializable {
      */
     @TableField("update_time")
     private LocalDateTime updateTime;
-
-
 }

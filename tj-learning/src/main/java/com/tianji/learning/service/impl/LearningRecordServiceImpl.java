@@ -121,7 +121,7 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
         // 4.1 判断是否为第一次学完
         boolean firstFinished = !old.getFinished() && formDTO.getMoment() * 2 >= formDTO.getDuration();
         if (!firstFinished) {
-            // 不是第一次学完，将数据写入缓存
+            // 不是第一次学完，将数据写入缓存，更新最近学习的小结和时间
             LearningRecord record = new LearningRecord();
             record.setLessonId(formDTO.getLessonId());
             record.setSectionId(formDTO.getSectionId());
