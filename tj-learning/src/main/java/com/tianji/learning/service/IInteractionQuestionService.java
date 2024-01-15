@@ -1,5 +1,6 @@
 package com.tianji.learning.service;
 
+import com.tianji.learning.domain.dto.QuestionFormDTO;
 import com.tianji.learning.domain.pojo.InteractionQuestion;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IInteractionQuestionService extends IService<InteractionQuestion> {
 
+    void saveQuestion(QuestionFormDTO questionFormDTO);
 }

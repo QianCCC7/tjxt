@@ -1,5 +1,8 @@
 package com.tianji.learning.service.impl;
 
+import com.tianji.common.utils.BeanUtils;
+import com.tianji.common.utils.UserContext;
+import com.tianji.learning.domain.dto.QuestionFormDTO;
 import com.tianji.learning.domain.pojo.InteractionQuestion;
 import com.tianji.learning.mapper.InteractionQuestionMapper;
 import com.tianji.learning.service.IInteractionQuestionService;
@@ -17,4 +20,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuestionMapper, InteractionQuestion> implements IInteractionQuestionService {
 
+    /**
+     * 提出问题接口
+     * @param questionFormDTO
+     */
+    @Override
+    public void saveQuestion(QuestionFormDTO questionFormDTO) {
+        // 1. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 2. 数据封装
+        InteractionQuestion interactionQuestion = BeanUtils.copyBean(questionFormDTO, InteractionQuestion.class);
+        interactionQuestion.setUserId(userId);
+        // 3. 写入数据库
+        save(interactionQuestion);
+    }
 }
