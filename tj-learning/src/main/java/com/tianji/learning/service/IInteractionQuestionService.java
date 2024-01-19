@@ -20,4 +20,6 @@ public interface IInteractionQuestionService extends IService<InteractionQuestio
     void saveQuestion(QuestionFormDTO questionFormDTO);
 
     PageDTO<QuestionVO> queryQuestionPage(QuestionPageQuery pageQuery);
+
+    QuestionVO queryQuestionById(Long id);
 }

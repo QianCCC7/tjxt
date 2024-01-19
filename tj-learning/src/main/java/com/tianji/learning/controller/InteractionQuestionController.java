@@ -40,4 +40,10 @@ public class InteractionQuestionController {
     public PageDTO<QuestionVO> queryQuestionPage(QuestionPageQuery pageQuery) {
         return questionService.queryQuestionPage(pageQuery);
     }
+
+    @ApiOperation("根据问题 id查询指定问题详情")
+    @GetMapping("/{id}")
+    public QuestionVO queryQuestionById(@PathVariable("id") Long id) {
+        return questionService.queryQuestionById(id);
+    }
 }

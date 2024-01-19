@@ -131,4 +131,29 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
 
         return PageDTO.of(page, voList);
     }
+
+    /**
+     * 根据问题 id查询指定问题详情
+     */
+    @Override
+    public QuestionVO queryQuestionById(Long id) {
+        // 1. 根据 id查询数据
+        InteractionQuestion question = getById(id);
+        // 2. 数据校验
+        if (Objects.isNull(question) || question.getHidden()) {
+            return null;// 没有数据或者被隐藏
+        }
+        // 3. 查询提问者信息
+        UserDTO user = null;
+        if (!question.getAnonymity()) {
+            user = userClient.queryUserById(question.getUserId());
+        }
+        // 4. 封装 vo
+        QuestionVO questionVO = BeanUtils.copyBean(question, QuestionVO.class);
+        if (Objects.nonNull(user)) {
+            questionVO.setUserName(user.getName());
+            questionVO.setUserIcon(user.getIcon());
+        }
+        return questionVO;
+    }
 }
