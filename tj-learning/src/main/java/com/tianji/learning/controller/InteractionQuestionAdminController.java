@@ -32,4 +32,9 @@ public class InteractionQuestionAdminController {
         return questionService.queryQuestionPageAdmin(pageQuery);
     }
 
+    @ApiOperation("管理端根据问题 id查询指定问题详情")
+    @GetMapping("/{id}")
+    public QuestionAdminVO  queryQuestionByIdAdmin(@PathVariable("id") Long id) {
+        return questionService.queryQuestionByIdAdmin(id);
+    }
 }

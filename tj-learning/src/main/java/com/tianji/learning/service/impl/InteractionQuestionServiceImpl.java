@@ -7,6 +7,8 @@ import com.tianji.api.client.course.CourseClient;
 import com.tianji.api.client.search.SearchClient;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.course.CataSimpleInfoDTO;
+import com.tianji.api.dto.course.CatalogueDTO;
+import com.tianji.api.dto.course.CourseFullInfoDTO;
 import com.tianji.api.dto.course.CourseSimpleInfoDTO;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.domain.dto.PageDTO;
@@ -22,10 +24,12 @@ import com.tianji.learning.domain.query.QuestionAdminPageQuery;
 import com.tianji.learning.domain.query.QuestionPageQuery;
 import com.tianji.learning.domain.vo.QuestionAdminVO;
 import com.tianji.learning.domain.vo.QuestionVO;
+import com.tianji.learning.enums.QuestionStatus;
 import com.tianji.learning.mapper.InteractionQuestionMapper;
 import com.tianji.learning.service.IInteractionQuestionService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.learning.service.IInteractionReplyService;
+import io.swagger.models.auth.In;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -174,7 +178,7 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
      */
     @Override
     public PageDTO<QuestionAdminVO> queryQuestionPageAdmin(QuestionAdminPageQuery pageQuery) {
-        // 1. 根据课程名称，获取课程 id
+        // 1. 根据课程名称，获取所有满足条件的课程 id
         List<Long> coursesIds = null;
         String courseName = pageQuery.getCourseName();
         if (StringUtils.isNotBlank(courseName)) {// 要根据课程名称查询问题
@@ -197,6 +201,7 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
         if (CollUtils.isEmpty(records)) {
             return PageDTO.empty(page);
         }
+
         // 3. 准备 vo其他数据：用户数据、课程数据、章节数据、分类数据
         Set<Long> userIds = new HashSet<>(), courseIds = new HashSet<>(), cataIds = new HashSet<>();
         // 3.1 获取问题数据的 id集合
@@ -255,5 +260,53 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
             questionAdminVOS.add(questionAdminVO);
         }
         return PageDTO.of(page, questionAdminVOS);
+    }
+
+    /**
+     * 管理端根据问题 id查询指定问题详情
+     */
+    @Override
+    public QuestionAdminVO queryQuestionByIdAdmin(Long id) {
+        // 1. 根据id查询问题
+        InteractionQuestion question = getById(id);
+        if (Objects.isNull(question)) {
+            return null;
+        }
+        // 2. 转PO为VO
+        QuestionAdminVO vo = BeanUtils.copyBean(question, QuestionAdminVO.class);
+        // 3. 提问者信息
+        UserDTO user = userClient.queryUserById(question.getUserId());
+        if (Objects.nonNull(user)) {
+            vo.setUserName(user.getName());
+            vo.setUserIcon(user.getIcon());
+        }
+        // 4. 课程信息
+        CourseFullInfoDTO course = courseClient.getCourseInfoById(question.getCourseId(), false, true);
+        if (Objects.nonNull(course)) {
+            vo.setCourseName(course.getName());// 课程名称
+            List<Long> teacherIds = course.getTeacherIds();
+            List<UserDTO> teachers = userClient.queryUserByIds(teacherIds);
+            if (CollUtils.isNotEmpty(teachers)) {
+                vo.setTeacherName(teachers.stream().map(UserDTO::getName).collect(Collectors.joining("/")));
+            }
+            String categoryNames = categoryCache.getCategoryNames(course.getCategoryIds());
+            if (Objects.nonNull(categoryNames)) {
+                vo.setCategoryName(categoryNames);// 三级分类名称，中间使用/隔开
+            }
+        }
+        // 5. 章节信息
+        List<Long> cataIds = List.of(question.getSectionId(), question.getChapterId());
+        List<CataSimpleInfoDTO> cataInfos = catalogueClient.batchQueryCatalogue(cataIds);
+        Map<Long, String> cataMap = new HashMap<>(cataInfos.size());
+        if (CollUtils.isNotEmpty(cataInfos)) {
+            cataMap = cataInfos
+                    .stream()
+                    .collect(Collectors.toMap(CataSimpleInfoDTO::getId, CataSimpleInfoDTO::getName));
+        }
+        vo.setSectionName(cataMap.getOrDefault(question.getSectionId(), ""));
+        vo.setChapterName(cataMap.getOrDefault(question.getChapterId(), ""));
+        question.setStatus(QuestionStatus.CHECKED);
+        updateById(question);// 更新该问题的状态为已查看
+        return vo;
     }
 }
