@@ -43,6 +43,12 @@ public class InteractionQuestionController {
         questionService.updateQuestion(id, questionFormDTO);
     }
 
+    @ApiOperation("删除互动问题")
+    @DeleteMapping("/{id}")
+    public void deleteQuestion(@PathVariable("id") Long id) {
+        questionService.deleteQuestion(id);
+    }
+
     @ApiOperation("分页查询互动问题")
     @GetMapping("/page")
     public PageDTO<QuestionVO> queryQuestionPage(QuestionPageQuery pageQuery) {

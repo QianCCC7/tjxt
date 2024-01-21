@@ -30,4 +30,6 @@ public interface IInteractionQuestionService extends IService<InteractionQuestio
     QuestionAdminVO  queryQuestionByIdAdmin(Long id);
 
     void updateQuestion(Long id, QuestionFormDTO questionFormDTO);
+
+    void deleteQuestion(Long id);
 }
