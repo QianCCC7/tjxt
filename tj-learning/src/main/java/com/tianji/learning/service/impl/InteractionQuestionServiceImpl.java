@@ -357,4 +357,17 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
         updateById(question);// 更新该问题的状态为已查看
         return vo;
     }
+
+    /**
+     * 管理端显示或隐藏问题
+     */
+    @Override
+    public void hiddenQuestion(Long id, Boolean hidden) {
+        InteractionQuestion question = getById(id);
+        if (!question.getHidden().equals(hidden)) {
+            question.setHidden(hidden);
+            question.setId(id);
+            updateById(question);
+        }
+    }
 }

@@ -37,4 +37,11 @@ public class InteractionQuestionAdminController {
     public QuestionAdminVO  queryQuestionByIdAdmin(@PathVariable("id") Long id) {
         return questionService.queryQuestionByIdAdmin(id);
     }
+
+    @ApiOperation("管理端隐藏或显示指定问题")
+    @PutMapping("/{id}/hidden/{hidden}")
+    public void hiddenQuestion(@PathVariable("id") Long id,
+                               @PathVariable("hidden") Boolean hidden) {
+        return questionService.hiddenQuestion(id, hidden);
+    }
 }
