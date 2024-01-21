@@ -159,4 +159,31 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
         }
         return PageDTO.of(page, list);
     }
+
+    /**
+     * 管理端隐藏或显示回答或评论
+     */
+    @Override
+    public void hiddenReply(Long id, Boolean hidden) {
+        // 1. 获取回答或评论
+        InteractionReply reply = getById(id);
+        if (Objects.isNull(reply)) {
+            throw new BadRequestException("回答或评论不存在");
+        }
+        // 2. 隐藏某个回答或者评论
+        InteractionReply interactionReply = new InteractionReply();
+        interactionReply.setId(id);
+        interactionReply.setHidden(hidden);
+        updateById(interactionReply);
+        // 3. 如果隐藏的是回答，那么该回答下的所有评论也要隐藏
+        if (reply.getAnswerId() != null && reply.getAnswerId() != 0) {
+            // 3.1 有上级，说明自己就是评论，无需处理
+            return;
+        }
+        // 3.2 隐藏回答下的评论
+        lambdaUpdate()
+                .eq(InteractionReply::getAnswerId, id)
+                .set(InteractionReply::getHidden, hidden)
+                .update();
+    }
 }

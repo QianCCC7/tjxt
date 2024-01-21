@@ -364,6 +364,9 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
     @Override
     public void hiddenQuestion(Long id, Boolean hidden) {
         InteractionQuestion question = getById(id);
+        if (Objects.isNull(question)) {
+            throw new BadRequestException("问题不存在");
+        }
         if (!question.getHidden().equals(hidden)) {
             question.setHidden(hidden);
             question.setId(id);
