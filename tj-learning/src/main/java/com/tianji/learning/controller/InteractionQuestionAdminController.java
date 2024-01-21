@@ -42,6 +42,6 @@ public class InteractionQuestionAdminController {
     @PutMapping("/{id}/hidden/{hidden}")
     public void hiddenQuestion(@PathVariable("id") Long id,
                                @PathVariable("hidden") Boolean hidden) {
-        return questionService.hiddenQuestion(id, hidden);
+        questionService.hiddenQuestion(id, hidden);
     }
 }
