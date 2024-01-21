@@ -8,6 +8,7 @@ import com.tianji.learning.domain.vo.QuestionVO;
 import com.tianji.learning.service.IInteractionQuestionService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,13 @@ public class InteractionQuestionController {
     @PostMapping
     public void saveQuestion(@Valid @RequestBody QuestionFormDTO questionFormDTO) {
         questionService.saveQuestion(questionFormDTO);
+    }
+
+    @ApiOperation("修改互动问题")
+    @PutMapping("/{id}")
+    public void updateQuestion(@PathVariable("id") Long id,
+                               @RequestBody QuestionFormDTO questionFormDTO) {
+        questionService.updateQuestion(id, questionFormDTO);
     }
 
     @ApiOperation("分页查询互动问题")

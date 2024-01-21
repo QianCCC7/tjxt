@@ -114,7 +114,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
                 userIds.add(record.getUserId());
             }
             answerIds.add(record.getAnswerId());
-            targetReplyIds.add(record.getTargetReplyId());
+            targetReplyIds.add(record.getTargetReplyId());// 当查询的是回答下的评论才会有 targetReplyIds
         }
         targetReplyIds.remove(0L);
         targetReplyIds.remove(null);

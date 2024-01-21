@@ -32,6 +32,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.learning.service.IInteractionReplyService;
 import io.swagger.models.auth.In;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -69,6 +70,28 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
         interactionQuestion.setUserId(userId);
         // 3. 写入数据库
         save(interactionQuestion);
+    }
+
+    /**
+     * 修改互动问题
+     */
+    @Override
+    public void updateQuestion(Long id, QuestionFormDTO questionFormDTO) {
+        // 1. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 2. 获取要修改的问题
+        InteractionQuestion question = getById(id);
+        if (Objects.isNull(question)) {
+            throw new BadRequestException("问题不存在");
+        }
+        // 3. 判断是否为该用户的问题
+        if (!question.getUserId().equals(userId)) {
+            throw new BadRequestException("无法修改他人问题");
+        }
+        // 4. 修改问题
+        InteractionQuestion res = BeanUtils.copyBean(questionFormDTO, InteractionQuestion.class);
+        res.setId(id);// 注意 id不能变
+        updateById(res);
     }
 
     /**
