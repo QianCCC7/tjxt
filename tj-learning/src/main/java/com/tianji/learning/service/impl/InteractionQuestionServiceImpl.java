@@ -8,7 +8,6 @@ import com.tianji.api.client.course.CourseClient;
 import com.tianji.api.client.search.SearchClient;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.course.CataSimpleInfoDTO;
-import com.tianji.api.dto.course.CatalogueDTO;
 import com.tianji.api.dto.course.CourseFullInfoDTO;
 import com.tianji.api.dto.course.CourseSimpleInfoDTO;
 import com.tianji.api.dto.user.UserDTO;
@@ -30,10 +29,7 @@ import com.tianji.learning.mapper.InteractionQuestionMapper;
 import com.tianji.learning.mapper.InteractionReplyMapper;
 import com.tianji.learning.service.IInteractionQuestionService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.tianji.learning.service.IInteractionReplyService;
-import io.swagger.models.auth.In;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
