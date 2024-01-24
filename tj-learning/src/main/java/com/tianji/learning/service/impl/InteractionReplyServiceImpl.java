@@ -2,6 +2,7 @@ package com.tianji.learning.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.api.client.remark.RemarkClient;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
@@ -45,6 +46,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
 
     private final IInteractionQuestionService questionService;
     private final UserClient userClient;
+    private final RemarkClient remarkClient;
 
     /**
      * 新增回答或评论
@@ -133,7 +135,8 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
             List<UserDTO> userDTOS = userClient.queryUserByIds(userIds);
             userMap = userDTOS.stream().collect(Collectors.toMap(UserDTO::getId, u -> u));
         }
-        // TODO 3.4 查询用户点赞状态
+        // 3.4 查询用户点赞状态
+        Set<Long> bizLiked = remarkClient.isBizLiked(answerIds);
         // 4. 封装 VO
         List<ReplyVO> list = new ArrayList<>(records.size());
         for (InteractionReply record : records) {
@@ -154,7 +157,8 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
                     vo.setTargetUserName(user.getName());
                 }
             }
-            // TODO 4.3 点赞状态
+            // 4.3 点赞状态
+            vo.setLiked(bizLiked.contains(record.getId()));
             list.add(vo);
         }
         return PageDTO.of(page, list);
