@@ -115,7 +115,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
             if (!record.getAnonymity() || forAdmin) {
                 userIds.add(record.getUserId());
             }
-            answerIds.add(record.getAnswerId());
+            answerIds.add(record.getId());
             targetReplyIds.add(record.getTargetReplyId());// 当查询的是回答下的评论才会有 targetReplyIds
         }
         targetReplyIds.remove(0L);
@@ -158,7 +158,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
                 }
             }
             // 4.3 点赞状态
-            vo.setLiked(bizLiked.contains(record.getId()));
+            vo.setLiked(CollUtils.isNotEmpty(bizLiked) && bizLiked.contains(record.getId()));
             list.add(vo);
         }
         return PageDTO.of(page, list);
