@@ -3,6 +3,7 @@ package com.tianji.remark.service.impl;
 import com.tianji.api.remark.LikeTimesDTO;
 import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
 import com.tianji.common.utils.BeanUtils;
+import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.StringUtils;
 import com.tianji.common.utils.UserContext;
 import com.tianji.remark.domain.dto.LikeRecordFormDTO;
@@ -15,7 +16,10 @@ import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.tianji.common.constants.MqConstants.Exchange.LIKE_RECORD_EXCHANGE;
 import static com.tianji.common.constants.MqConstants.Key.LIKED_TIMES_KEY_TEMPLATE;
@@ -90,5 +94,24 @@ public class LikedRecordServiceImpl extends ServiceImpl<LikedRecordMapper, Liked
         }
         // 3. 如果存在，删除记录
         return removeById(likedRecord.getId());
+    }
+
+    /**
+     * 查询业务 id集合中每个的点赞状态
+     */
+    @Override
+    public Set<Long> isBizLiked(List<Long> bizIds) {
+        // 1. 获取登录用户
+        Long userId = UserContext.getUser();
+        // 2. 查询点赞状态
+        List<LikedRecord> list = lambdaQuery()
+                .eq(LikedRecord::getUserId, userId)
+                .in(LikedRecord::getBizId, bizIds)
+                .list();
+        // 3. 返回结果
+        if (CollUtils.isNotEmpty(list)) {
+            return list.stream().map(LikedRecord::getBizId).collect(Collectors.toSet());
+        }
+        return null;
     }
 }
