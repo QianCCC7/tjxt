@@ -13,13 +13,16 @@ import com.tianji.remark.domain.pojo.LikedRecord;
 import com.tianji.remark.mapper.LikedRecordMapper;
 import com.tianji.remark.service.ILikedRecordService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.StringRedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.tianji.common.constants.MqConstants.Exchange.LIKE_RECORD_EXCHANGE;
 import static com.tianji.common.constants.MqConstants.Key.LIKED_TIMES_KEY_TEMPLATE;
@@ -90,13 +93,30 @@ public class LikedRecordServiceRedisImpl extends ServiceImpl<LikedRecordMapper, 
         // 1. 获取登录用户
         Long userId = UserContext.getUser();
         // 2. 查询点赞状态
-        List<LikedRecord> list = lambdaQuery()
-                .eq(LikedRecord::getUserId, userId)
-                .in(LikedRecord::getBizId, bizIds)
-                .list();
+        // 通过批处理，这样可以在一次查询业务 id集合中每个的点赞状态请求中,redis可以一次批量处理 bizIds.size()次 isMember命令
+        // 并通过返回一次查询结果，如果是原本方式，那么需要返回 bizIds.size()次 isMember的结果
+        List<Object> list = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            StringRedisConnection src = (StringRedisConnection) connection;// 强转为 StringRedisConnection
+            for (Long bizId : bizIds) {
+                String key = RedisConstants.LIKES_BIZ_KEY_PREFIX + bizId;
+                src.sIsMember(key, userId.toString());// 注意结果会自动封装到自己原本的坐标中，1->true, 2->false
+            }
+            return null;// 不需要关注返回结果
+        });
         // 3. 返回结果
-        if (CollUtils.isNotEmpty(list)) {
-            return list.stream().map(LikedRecord::getBizId).collect(Collectors.toSet());
+        // for (int i = 0; i < list.size(); i++) {
+        //     Boolean o = (Boolean) list.get(i);// 这个就是对应坐标 src.sIsMember(key, userId.toString());的值
+        //     if (o) {
+        //         set.add(bizIds.get(i));
+        //     }
+        // }
+        Set<Long> set = IntStream
+                .range(0, list.size()) // 范围为 0 ~ list.size()
+                .filter(i -> (boolean) list.get(i)) // 过滤出所有点赞状态为 true的 bizId的坐标
+                .mapToObj(i -> bizIds.get(i)) // 获取对应坐标出的 bizId
+                .collect(Collectors.toSet());// 转为 set
+        if (CollUtils.isNotEmpty(set)) {
+            return set;
         }
         return null;
     }
