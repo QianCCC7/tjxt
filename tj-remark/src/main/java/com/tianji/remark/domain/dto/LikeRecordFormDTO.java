@@ -9,10 +9,12 @@ import javax.validation.constraints.NotNull;
 @Data
 @ApiModel(description = "点赞记录表单实体")
 public class LikeRecordFormDTO {
+    // 回答或评论或笔记的 id
     @ApiModelProperty("点赞业务id")
     @NotNull(message = "业务id不能为空")
     private Long bizId;
 
+    // 类型如 qa,note
     @ApiModelProperty("点赞业务类型")
     @NotNull(message = "业务类型不能为空")
     private String bizType;
