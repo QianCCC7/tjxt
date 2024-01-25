@@ -18,6 +18,7 @@ import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -119,5 +120,33 @@ public class LikedRecordServiceRedisImpl extends ServiceImpl<LikedRecordMapper, 
             return set;
         }
         return null;
+    }
+
+    /**
+     * 根据业务类型，统计其对应业务的点赞数量，然后通过 mq消息通知监听业务区更新点赞数量
+     */
+    @Override
+    public void readLikedTimesAndSendMessage(String bizType, int maxBizSize) {
+        // 1. 读取并移除 Redis中缓存的点赞总数
+        // 建议从小到大读取数据，因为 score较大的数据对点赞没有 score较小的数据敏感
+        String key = RedisConstants.LIKES_TIMES_KEY_PREFIX + bizType;
+        Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet().popMin(key, maxBizSize);
+        if (CollUtils.isEmpty(tuples)) return;
+        // 2. 数据转换
+        List<LikeTimesDTO> list = new ArrayList<>(tuples.size());
+        for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+            String bizId = tuple.getValue();
+            Double likedTimes = tuple.getScore();
+            if (Objects.isNull(bizId) || Objects.isNull(likedTimes)) {
+                continue;
+            }
+            list.add(LikeTimesDTO.of(Long.valueOf(bizId), likedTimes.intValue()));
+        }
+        // 3. 发送MQ
+        mqHelper.send(
+                LIKE_RECORD_EXCHANGE,
+                StringUtils.format(LIKED_TIMES_KEY_TEMPLATE, bizType),
+                list
+        );
     }
 }

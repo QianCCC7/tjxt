@@ -114,4 +114,9 @@ public class LikedRecordServiceImpl extends ServiceImpl<LikedRecordMapper, Liked
         }
         return null;
     }
+
+    @Override
+    public void readLikedTimesAndSendMessage(String bizType, int maxBizSize) {
+
+    }
 }
