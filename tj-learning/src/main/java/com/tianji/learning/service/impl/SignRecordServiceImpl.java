@@ -55,6 +55,7 @@ public class SignRecordServiceImpl implements ISignRecordService {
         vo.setSignPoints(0);
         return vo;
     }
+
     /**
      * 计算用户本月连续签到天数
      */
@@ -72,5 +73,38 @@ public class SignRecordServiceImpl implements ISignRecordService {
             num >>>= 1;// 无符号右移
         }
         return cnt;
+    }
+
+    /**
+     * 查询本月签到记录
+     */
+    @Override
+    public Byte[] querySignRecords() {
+        // 1. 获取登录用户
+        Long userId = UserContext.getUser();
+        // 2. 获取当前日期
+        LocalDate now = LocalDate.now();
+        // 3. 拼接 key
+        String key = RedisConstants.SIGN_RECORD_KEY_PREFIX
+                + userId
+                + ":"
+                + now.format(DateTimeFormatter.ofPattern("yyyyMM"));
+        int dayOfMonth = now.getDayOfMonth();
+        // 4. 查询本月从第一天开始到今天为止的所有签到记录的十进制数
+        List<Long> list = redisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create().get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0)
+        );
+        if (CollUtils.isEmpty(list)) return new Byte[0];
+        int num = list.get(0).intValue();
+        Byte[] times = new Byte[dayOfMonth];
+        // 从当前天开始枚举(注意二进制左边是第一天，最右边才是最后一天)
+        int cur = dayOfMonth - 1;
+        while (num != 0) {
+            times[cur] = (byte) (num & 1);
+            num >>>= 1;
+            cur--;
+        }
+        return times;
     }
 }
