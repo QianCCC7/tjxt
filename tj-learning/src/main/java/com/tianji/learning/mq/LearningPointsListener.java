@@ -4,7 +4,6 @@ import com.tianji.common.constants.MqConstants;
 import com.tianji.learning.enums.PointsRecordType;
 import com.tianji.learning.mq.message.SignInMessage;
 import com.tianji.learning.service.IPointsRecordService;
-import com.tianji.learning.service.ISignRecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -30,6 +29,7 @@ public class LearningPointsListener {
     ))
     // 由于该方法获取到的积分是动态的，所以通过实体类封装积分和 userId
     public void listenSignMessage(SignInMessage message) {
+        log.debug("监听到签到消息...");
         pointsRecordService.addPointsRecord(message.getUserId(), message.getPoints(), PointsRecordType.SIGN);
     }
 

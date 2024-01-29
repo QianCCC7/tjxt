@@ -50,6 +50,7 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
         pointsRecord.setUserId(userId);
         pointsRecord.setType(type);
         pointsRecord.setPoints(can);
+        log.debug("保存签到积分记录...");
         save(pointsRecord);
     }
 
