@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class LearningPointsListener {
-    private IPointsRecordService pointsRecordService;
+    private final IPointsRecordService pointsRecordService;
 
     /**
      * 监听签到的消息，用于新增积分

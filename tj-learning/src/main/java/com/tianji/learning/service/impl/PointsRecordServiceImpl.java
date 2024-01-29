@@ -1,17 +1,25 @@
 package com.tianji.learning.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tianji.common.utils.BeanUtils;
+import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.DateUtils;
+import com.tianji.common.utils.UserContext;
 import com.tianji.learning.domain.pojo.PointsRecord;
+import com.tianji.learning.domain.vo.PointsStatisticsVO;
 import com.tianji.learning.enums.PointsRecordType;
 import com.tianji.learning.mapper.PointsRecordMapper;
 import com.tianji.learning.service.IPointsRecordService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -32,13 +40,11 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
         int maxPoints = type.getMaxPoints();
         int can = points;
         // 2. 有，则判断今日积分是否超过上限
-        log.debug("进入了新增积分方法");
         if (maxPoints > 0) {// 大于 0则有上限
             // 2.1 查询今日获得积分
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime startTime = DateUtils.getDayStartTime(now), entTime = DateUtils.getDayEndTime(now);
             int curPoints = queryPointsByTypeAndDate(userId, type, startTime, entTime);
-            log.debug("curPoints = {}" + curPoints);
             // 2.2 判断是否超过上限
             if (curPoints >= maxPoints) {
                 // 2.3 超过，直接结束
@@ -70,5 +76,38 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
         Integer points = getBaseMapper().queryPointsByTypeAndDate(queryWrapper);
         // 3. 判断并返回
         return Objects.isNull(points) ? 0 : points;
+    }
+
+    /**
+     * 查询今日积分情况
+     */
+    @Override
+    public List<PointsStatisticsVO> queryMyPointsToday() {
+        // 1. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 2. 获取当前时间
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = DateUtils.getDayStartTime(now), endTime = DateUtils.getDayEndTime(now);
+        // 3. 构建查询条件
+        LambdaQueryWrapper<PointsRecord> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper
+                .eq(PointsRecord::getUserId, userId)
+                .between(PointsRecord::getCreateTime, startTime, endTime);
+        // 4. 查询
+        List<PointsRecord> list = getBaseMapper().queryPointsByDate(queryWrapper);
+        // 5. 封装返回数据
+        if (CollUtils.isEmpty(list)) {
+            return CollUtils.emptyList();
+        }
+        List<PointsStatisticsVO> voList = new ArrayList<>(list.size());
+        for (PointsRecord pointsRecord : list) {
+            PointsStatisticsVO vo = new PointsStatisticsVO();
+            vo.setType(pointsRecord.getType().getDesc());
+            vo.setPoints(pointsRecord.getPoints());
+            vo.setMaxPoints(pointsRecord.getType().getMaxPoints());
+            voList.add(vo);
+        }
+
+        return voList;
     }
 }
