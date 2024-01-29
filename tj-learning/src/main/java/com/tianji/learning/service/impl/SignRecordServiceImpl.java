@@ -61,7 +61,7 @@ public class SignRecordServiceImpl implements ISignRecordService {
                 rewardPoints = 40;
                 break;
         }
-        // 5. TODO 保存积分明细记录
+        // 5. 保存积分明细记录
         mqHelper.send(
                 MqConstants.Exchange.LEARNING_EXCHANGE,
                 MqConstants.Key.SIGN_IN,

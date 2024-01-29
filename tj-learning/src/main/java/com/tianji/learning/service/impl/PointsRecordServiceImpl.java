@@ -32,11 +32,13 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
         int maxPoints = type.getMaxPoints();
         int can = points;
         // 2. 有，则判断今日积分是否超过上限
+        log.debug("进入了新增积分方法");
         if (maxPoints > 0) {// 大于 0则有上限
             // 2.1 查询今日获得积分
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime startTime = DateUtils.getDayStartTime(now), entTime = DateUtils.getDayEndTime(now);
             int curPoints = queryPointsByTypeAndDate(userId, type, startTime, entTime);
+            log.debug("curPoints = {}" + curPoints);
             // 2.2 判断是否超过上限
             if (curPoints >= maxPoints) {
                 // 2.3 超过，直接结束
