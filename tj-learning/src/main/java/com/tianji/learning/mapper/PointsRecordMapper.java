@@ -17,6 +17,6 @@ import org.apache.ibatis.annotations.Select;
  */
 public interface PointsRecordMapper extends BaseMapper<PointsRecord> {
 
-    @Select("select sum(points) from points_record ${ew.customSqlSegment}}")
+    @Select("select sum(points) from points_record ${ew.customSqlSegment}")
     Integer queryPointsByTypeAndDate(@Param(Constants.WRAPPER) LambdaQueryWrapper<PointsRecord> queryWrapper);
 }
