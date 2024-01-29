@@ -1,10 +1,13 @@
 package com.tianji.learning.service.impl;
 
+import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
+import com.tianji.common.constants.MqConstants;
 import com.tianji.common.exceptions.BizIllegalException;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
 import com.tianji.learning.constants.RedisConstants;
 import com.tianji.learning.domain.vo.SignResultVO;
+import com.tianji.learning.mq.message.SignInMessage;
 import com.tianji.learning.service.ISignRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.BitFieldSubCommands;
@@ -20,6 +23,7 @@ import java.util.List;
 public class SignRecordServiceImpl implements ISignRecordService {
 
     private final StringRedisTemplate redisTemplate;
+    private final RabbitMqHelper mqHelper;
 
     /**
      * 保存签到记录
@@ -44,15 +48,29 @@ public class SignRecordServiceImpl implements ISignRecordService {
         }
         // 3. 计算本月连续签到天数
         int signDays = countSignDays(key, now.getDayOfMonth());
-        // 4. TODO 计算签到得分
-
+        // 4. 计算签到可以加的积分，连续签到有额外积分
+        int rewardPoints = 0;
+        switch (signDays) {
+            case 7:
+                rewardPoints = 10;
+                break;
+            case 14:
+                rewardPoints = 20;
+                break;
+            case 28:
+                rewardPoints = 40;
+                break;
+        }
         // 5. TODO 保存积分明细记录
-
+        mqHelper.send(
+                MqConstants.Exchange.LEARNING_EXCHANGE,
+                MqConstants.Key.SIGN_IN,
+                SignInMessage.of(userId, rewardPoints + 1)
+        );
         // 6. 封装返回
         SignResultVO vo = new SignResultVO();
         vo.setSignDays(signDays);
-        vo.setRewardPoints(0);
-        vo.setSignPoints(0);
+        vo.setRewardPoints(rewardPoints);
         return vo;
     }
 

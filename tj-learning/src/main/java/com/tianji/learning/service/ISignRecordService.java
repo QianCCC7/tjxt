@@ -6,4 +6,6 @@ public interface ISignRecordService {
     SignResultVO addSignRecords();
 
     Byte[] querySignRecords();
+
+
 }

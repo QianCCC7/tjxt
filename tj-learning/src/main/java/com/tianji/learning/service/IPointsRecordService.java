@@ -2,6 +2,7 @@ package com.tianji.learning.service;
 
 import com.tianji.learning.domain.pojo.PointsRecord;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.tianji.learning.enums.PointsRecordType;
 
 /**
  * <p>
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IPointsRecordService extends IService<PointsRecord> {
 
+    void addPointsRecord(Long userId, int i, PointsRecordType qa);
 }
