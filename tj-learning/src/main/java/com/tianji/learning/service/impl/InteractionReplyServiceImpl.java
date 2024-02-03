@@ -6,6 +6,7 @@ import com.tianji.api.client.remark.RemarkClient;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
+import com.tianji.common.constants.MqConstants;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.BeanUtils;
@@ -18,6 +19,7 @@ import com.tianji.learning.domain.query.ReplyPageQuery;
 import com.tianji.learning.domain.vo.ReplyVO;
 import com.tianji.learning.enums.QuestionStatus;
 import com.tianji.learning.mapper.InteractionReplyMapper;
+import com.tianji.learning.mq.message.SignInMessage;
 import com.tianji.learning.service.IInteractionQuestionService;
 import com.tianji.learning.service.IInteractionReplyService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -47,6 +49,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
     private final IInteractionQuestionService questionService;
     private final UserClient userClient;
     private final RemarkClient remarkClient;
+    private final RabbitMqHelper mqHelper;
 
     /**
      * 新增回答或评论
@@ -69,6 +72,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
                     .setSql("reply_times = reply_times + 1")
                     .eq(InteractionReply::getId, interactionReply.getAnswerId()) // 上级 id
                     .update();
+
         } else {
             // 3.3 是回答，则更新回答表中最近一次回答以及回答数量
             questionService.lambdaUpdate()
@@ -78,7 +82,13 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
                     .set(reply.getIsStudent(), InteractionQuestion::getStatus, QuestionStatus.UN_CHECK.getValue()) // 更新查看状态
                     .update();
         }
-        // TODO 4. 尝试累加积分
+        // 4. 尝试累加积分
+        if (isAnswer) {
+            mqHelper.send(MqConstants.Exchange.LEARNING_EXCHANGE,
+                    MqConstants.Key.WRITE_REPLY,
+                    SignInMessage.of(userId, 5)
+                    );
+        }
     }
 
     /**

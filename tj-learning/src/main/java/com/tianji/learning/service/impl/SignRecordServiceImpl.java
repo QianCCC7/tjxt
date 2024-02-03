@@ -8,8 +8,8 @@ import com.tianji.common.utils.UserContext;
 import com.tianji.learning.constants.RedisConstants;
 import com.tianji.learning.domain.vo.SignResultVO;
 import com.tianji.learning.mq.message.SignInMessage;
-import com.tianji.learning.service.ISignRecordService;
 import lombok.RequiredArgsConstructor;
+import com.tianji.learning.service.ISignRecordService;
 import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ public class SignRecordServiceImpl implements ISignRecordService {
     private final RabbitMqHelper mqHelper;
 
     /**
-     * 保存签到记录
+     * 用户签到时，给予积分奖励并保存签到记录
      */
     @Override
     public SignResultVO addSignRecords() {
@@ -61,7 +61,7 @@ public class SignRecordServiceImpl implements ISignRecordService {
                 rewardPoints = 40;
                 break;
         }
-        // 5. 保存积分明细记录
+        // 5. MQ通知保存积分明细记录
         mqHelper.send(
                 MqConstants.Exchange.LEARNING_EXCHANGE,
                 MqConstants.Key.SIGN_IN,
