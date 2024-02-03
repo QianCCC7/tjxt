@@ -4,6 +4,8 @@ import com.tianji.api.client.course.CourseClient;
 import com.tianji.api.dto.course.CourseFullInfoDTO;
 import com.tianji.api.dto.leanring.LearningLessonDTO;
 import com.tianji.api.dto.leanring.LearningRecordDTO;
+import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
+import com.tianji.common.constants.MqConstants;
 import com.tianji.common.exceptions.BizIllegalException;
 import com.tianji.common.exceptions.DbException;
 import com.tianji.common.utils.BeanUtils;
@@ -14,6 +16,7 @@ import com.tianji.learning.domain.pojo.LearningRecord;
 import com.tianji.learning.enums.LessonStatus;
 import com.tianji.learning.enums.SectionType;
 import com.tianji.learning.mapper.LearningRecordMapper;
+import com.tianji.learning.mq.message.SignInMessage;
 import com.tianji.learning.service.ILearningLessonService;
 import com.tianji.learning.service.ILearningRecordService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -41,6 +44,7 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
     private final ILearningLessonService learningLessonService;
     private final CourseClient courseClient;
     private final LearningRecordDelayTaskHandler taskHandler;
+    private final RabbitMqHelper mqHelper;
 
     /**
      * 查询指定课程的学习记录
@@ -92,6 +96,10 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
         if (!finished) {
             // 没有新完成的小结，直接 return，接下来的交给延迟任务处理
             return;
+        } else {
+            mqHelper.send(MqConstants.Exchange.LEARNING_EXCHANGE,
+                    MqConstants.Key.LEARN_SECTION,
+                    SignInMessage.of(userId, 10));
         }
         // 3. 处理课表数据
         handleLearningLessonChange(formDTO);
