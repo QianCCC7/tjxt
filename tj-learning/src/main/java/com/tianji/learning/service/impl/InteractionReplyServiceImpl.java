@@ -83,7 +83,7 @@ public class InteractionReplyServiceImpl extends ServiceImpl<InteractionReplyMap
                     .update();
         }
         // 4. 尝试累加积分
-        if (isAnswer) {
+        if (isAnswer && reply.getIsStudent()) {
             mqHelper.send(MqConstants.Exchange.LEARNING_EXCHANGE,
                     MqConstants.Key.WRITE_REPLY,
                     SignInMessage.of(userId, 5)
