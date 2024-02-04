@@ -4,16 +4,22 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.DateUtils;
 import com.tianji.common.utils.UserContext;
+import com.tianji.learning.constants.RedisConstants;
 import com.tianji.learning.domain.pojo.PointsRecord;
 import com.tianji.learning.domain.vo.PointsStatisticsVO;
 import com.tianji.learning.enums.PointsRecordType;
 import com.tianji.learning.mapper.PointsRecordMapper;
 import com.tianji.learning.service.IPointsRecordService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -28,7 +34,9 @@ import java.util.Objects;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, PointsRecord> implements IPointsRecordService {
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 新增积分
@@ -36,11 +44,11 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
     public void addPointsRecord(Long userId, int points, PointsRecordType type) {
         // 1. 判断当前方式是否有积分上限
         int maxPoints = type.getMaxPoints();
-        int can = points;
+        int can = points;// 实际累加的分数
+        LocalDateTime now = LocalDateTime.now();
         // 2. 有，则判断今日积分是否超过上限
         if (maxPoints > 0) {// 大于 0则有上限
             // 2.1 查询今日获得积分
-            LocalDateTime now = LocalDateTime.now();
             LocalDateTime startTime = DateUtils.getDayStartTime(now), entTime = DateUtils.getDayEndTime(now);
             int curPoints = queryPointsByTypeAndDate(userId, type, startTime, entTime);
             // 2.2 判断是否超过上限
@@ -58,6 +66,9 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
         pointsRecord.setPoints(can);
         log.debug("保存{}的积分记录...", type.getDesc());
         save(pointsRecord);
+        // 4. 累加积分到 redis中，用于实现排行榜功能
+        String key = RedisConstants.POINTS_BOARD_KEY_PREFIX + now.format(DateUtils.POINTS_BOARD_SUFFIX_FORMATTER);
+        redisTemplate.opsForZSet().incrementScore(key, userId.toString(), can);
     }
 
     /**
