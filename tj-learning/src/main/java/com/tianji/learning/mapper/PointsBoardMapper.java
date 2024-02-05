@@ -2,6 +2,7 @@ package com.tianji.learning.mapper;
 
 import com.tianji.learning.domain.pojo.PointsBoard;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * <p>
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface PointsBoardMapper extends BaseMapper<PointsBoard> {
 
+    void createTableBySeasonId(@Param("tableName") String tableName);
 }

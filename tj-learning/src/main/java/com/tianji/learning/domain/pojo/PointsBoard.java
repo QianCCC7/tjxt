@@ -27,7 +27,7 @@ public class PointsBoard implements Serializable {
     /**
      * 榜单id
      */
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(value = "id", type = IdType.INPUT)
     private Long id;
 
     /**
