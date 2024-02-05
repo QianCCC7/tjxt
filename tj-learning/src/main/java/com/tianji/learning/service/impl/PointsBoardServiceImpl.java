@@ -147,4 +147,11 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         return null;
     }
 
+    /**
+     * 利用赛季 id生成数据表
+     */
+    @Override
+    public void createTableBySeasonId(Integer seasonId) {
+        getBaseMapper().createTableBySeasonId("points_board_" + seasonId);
+    }
 }

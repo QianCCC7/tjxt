@@ -10,8 +10,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -40,5 +42,18 @@ public class PointsBoardSeasonServiceImpl extends ServiceImpl<PointsBoardSeasonM
                     .collect(Collectors.toList());
         }
         return CollUtils.emptyList();
+    }
+
+    /**
+     * 根据时间查询赛季 id
+     */
+    @Override
+    public Integer querySeasonIdByTime(LocalDate lastMonth) {
+        // 注意lt和gt不要写反，时间是 beginTime <= lastMonth <= endTime
+        Optional<PointsBoardSeason> optional = lambdaQuery()
+                .le(PointsBoardSeason::getBeginTime, lastMonth)
+                .ge(PointsBoardSeason::getEndTime, lastMonth)
+                .oneOpt();
+        return optional.map(PointsBoardSeason::getId).orElse(null);
     }
 }
