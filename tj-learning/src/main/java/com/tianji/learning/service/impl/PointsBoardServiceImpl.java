@@ -108,7 +108,8 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
     /**
      * 查询当前赛季榜单列表(redis)
      */
-    private List<PointsBoard> queryCurrentBoardList(String key, Integer pageNo, Integer pageSize) {
+    @Override
+    public List<PointsBoard> queryCurrentBoardList(String key, Integer pageNo, Integer pageSize) {
         // 1. 计算分页，即当前页第一个用户的排名
         int from = (pageNo - 1) * pageSize;
         // 2. 查询
