@@ -7,7 +7,7 @@ public interface RedisConstants {
     String SIGN_RECORD_KEY_PREFIX = "sign:uid:";
 
     /**
-     * 积分排行榜的 key的前缀，board:{} 参数为当前赛季的日期
+     * 积分排行榜的 key的前缀，boards:{} 参数为当前赛季的日期
      */
-    String POINTS_BOARD_KEY_PREFIX = "board:";
+    String POINTS_BOARD_KEY_PREFIX = "boards:";
 }
