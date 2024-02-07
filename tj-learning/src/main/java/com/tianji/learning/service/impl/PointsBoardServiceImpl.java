@@ -1,5 +1,6 @@
 package com.tianji.learning.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.utils.CollUtils;
@@ -55,7 +56,7 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         // 3. 查询榜单列表
         List<PointsBoard> historyBoard = isCurrentSeason ?
                 queryCurrentBoardList(key, query.getPageNo(), query.getPageSize()):  // 查询当前赛季榜单列表(redis)
-                queryHistoryBoardList(season, query.getPageNo(), query.getPageSize()); // 查询历史赛季榜单列表(数据库)
+                queryHistoryBoardList(query); // 查询历史赛季榜单列表(数据库)
         // 4. 封装 VO
         PointsBoardVO pointsBoardVO = new PointsBoardVO();
         // 4.1 处理我的信息
@@ -154,8 +155,21 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
     /**
      * 查询历史赛季榜单列表(数据库)
      */
-    private List<PointsBoard> queryHistoryBoardList(Long season, Integer pageNo, Integer pageSize) {
-        return null;
+    private List<PointsBoard> queryHistoryBoardList(PointsBoardQuery query) {
+        // 1. 向 ThreadLocal传入新表名
+        Long seasonId = query.getSeason();
+        TableInfoContext.setInfo("points_board_" + seasonId);
+        // 2. 分页查询
+        Page<PointsBoard> page = lambdaQuery().page(query.toMpPage());
+        List<PointsBoard> records = page.getRecords();
+        if (CollUtils.isEmpty(records)) {
+            return CollUtils.emptyList();
+        }
+        // 3. 封装排名
+        for (PointsBoard record : records) {
+            record.setRank(record.getId().intValue());
+        }
+        return records;
     }
 
     /**
