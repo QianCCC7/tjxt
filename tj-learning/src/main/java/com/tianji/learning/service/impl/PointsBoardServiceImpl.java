@@ -1,5 +1,6 @@
 package com.tianji.learning.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.utils.CollUtils;
@@ -13,6 +14,7 @@ import com.tianji.learning.domain.vo.PointsBoardVO;
 import com.tianji.learning.mapper.PointsBoardMapper;
 import com.tianji.learning.service.IPointsBoardService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.tianji.learning.utils.TableInfoContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.BoundZSetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -54,14 +56,12 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         // 3. 查询榜单列表
         List<PointsBoard> historyBoard = isCurrentSeason ?
                 queryCurrentBoardList(key, query.getPageNo(), query.getPageSize()):  // 查询当前赛季榜单列表(redis)
-                queryHistoryBoardList(season, query.getPageNo(), query.getPageSize()); // 查询历史赛季榜单列表(数据库)
+                queryHistoryBoardList(query); // 查询历史赛季榜单列表(数据库)
         // 4. 封装 VO
         PointsBoardVO pointsBoardVO = new PointsBoardVO();
         // 4.1 处理我的信息
-        if (myBoard != null) {
-            pointsBoardVO.setPoints(myBoard.getPoints());
-            pointsBoardVO.setRank(myBoard.getRank());
-        }
+        pointsBoardVO.setPoints(myBoard.getPoints());
+        pointsBoardVO.setRank(myBoard.getRank());
         if (CollUtils.isEmpty(historyBoard)) {
             return pointsBoardVO;
         }
@@ -137,15 +137,39 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
     /**
      * 查询我在历史赛季榜单的排名和积分等(数据库)
      */
-    private PointsBoard queryMyHistoryBoard(Long season) {
-        return null;
+    private PointsBoard queryMyHistoryBoard(Long seasonId) {
+        // 1. 向 ThreadLocal传入新表名
+        TableInfoContext.setInfo("points_board_" + seasonId);
+        // 2. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 3. 查询数据
+        PointsBoard pointsBoard = lambdaQuery()
+                .eq(PointsBoard::getUserId, userId)
+                .one();
+        // 4. 封装排名
+        pointsBoard.setRank(pointsBoard.getId().intValue());
+
+        return pointsBoard;
     }
 
     /**
      * 查询历史赛季榜单列表(数据库)
      */
-    private List<PointsBoard> queryHistoryBoardList(Long season, Integer pageNo, Integer pageSize) {
-        return null;
+    private List<PointsBoard> queryHistoryBoardList(PointsBoardQuery query) {
+        // 1. 向 ThreadLocal传入新表名
+        Long seasonId = query.getSeason();
+        TableInfoContext.setInfo("points_board_" + seasonId);
+        // 2. 分页查询
+        Page<PointsBoard> page = lambdaQuery().page(query.toMpPage());
+        List<PointsBoard> records = page.getRecords();
+        if (CollUtils.isEmpty(records)) {
+            return CollUtils.emptyList();
+        }
+        // 3. 封装排名
+        for (PointsBoard record : records) {
+            record.setRank(record.getId().intValue());
+        }
+        return records;
     }
 
     /**
