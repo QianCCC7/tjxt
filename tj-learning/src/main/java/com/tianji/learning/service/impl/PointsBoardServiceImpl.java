@@ -13,6 +13,7 @@ import com.tianji.learning.domain.vo.PointsBoardVO;
 import com.tianji.learning.mapper.PointsBoardMapper;
 import com.tianji.learning.service.IPointsBoardService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.tianji.learning.utils.TableInfoContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.BoundZSetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -58,10 +59,8 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         // 4. 封装 VO
         PointsBoardVO pointsBoardVO = new PointsBoardVO();
         // 4.1 处理我的信息
-        if (myBoard != null) {
-            pointsBoardVO.setPoints(myBoard.getPoints());
-            pointsBoardVO.setRank(myBoard.getRank());
-        }
+        pointsBoardVO.setPoints(myBoard.getPoints());
+        pointsBoardVO.setRank(myBoard.getRank());
         if (CollUtils.isEmpty(historyBoard)) {
             return pointsBoardVO;
         }
@@ -137,8 +136,19 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
     /**
      * 查询我在历史赛季榜单的排名和积分等(数据库)
      */
-    private PointsBoard queryMyHistoryBoard(Long season) {
-        return null;
+    private PointsBoard queryMyHistoryBoard(Long seasonId) {
+        // 1. 向 ThreadLocal传入新表名
+        TableInfoContext.setInfo("points_board_" + seasonId);
+        // 2. 获取当前登录用户
+        Long userId = UserContext.getUser();
+        // 3. 查询数据
+        PointsBoard pointsBoard = lambdaQuery()
+                .eq(PointsBoard::getUserId, userId)
+                .one();
+        // 4. 封装排名
+        pointsBoard.setRank(pointsBoard.getId().intValue());
+
+        return pointsBoard;
     }
 
     /**
