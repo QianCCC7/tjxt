@@ -1,20 +1,27 @@
 package com.tianji.promotion.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.BeanUtils;
 import com.tianji.common.utils.CollUtils;
+import com.tianji.common.utils.StringUtils;
 import com.tianji.promotion.domain.dto.CouponFormDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.CouponScope;
+import com.tianji.promotion.domain.query.CouponQuery;
+import com.tianji.promotion.domain.vo.CouponPageVO;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.service.ICouponScopeService;
 import com.tianji.promotion.service.ICouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -53,5 +60,26 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
                         .setCouponId(coupon.getId()))
                 .collect(Collectors.toList());
         couponScopeService.saveBatch(couponScopeList);
+    }
+
+    /**
+     * 分页查询优惠券
+     */
+    @Override
+    public PageDTO<CouponPageVO> queryCouponByPage(CouponQuery query) {
+        // 1. 查询数据
+        Page<Coupon> page = lambdaQuery()
+                .eq(Objects.nonNull(query.getType()), Coupon::getDiscountType, query.getType())
+                .eq(Objects.nonNull(query.getStatus()), Coupon::getStatus, query.getStatus())
+                .like(StringUtils.isNotBlank(query.getName()), Coupon::getName, query.getName())
+                .page(query.toMpPageDefaultSortByCreateTimeDesc());
+        // 2. 封装vo
+        List<Coupon> records = page.getRecords();
+        if (CollUtils.isEmpty(records)) {
+            return PageDTO.empty(page);
+        }
+        List<CouponPageVO> couponPageVOList = BeanUtils.copyList(records, CouponPageVO.class);
+        // 3. 返回数据
+        return PageDTO.of(page, couponPageVOList);
     }
 }
