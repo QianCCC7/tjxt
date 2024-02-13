@@ -7,10 +7,12 @@ import com.tianji.common.utils.BeanUtils;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.StringUtils;
 import com.tianji.promotion.domain.dto.CouponFormDTO;
+import com.tianji.promotion.domain.dto.CouponIssueFormDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.CouponScope;
 import com.tianji.promotion.domain.query.CouponQuery;
 import com.tianji.promotion.domain.vo.CouponPageVO;
+import com.tianji.promotion.enums.CouponStatus;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.service.ICouponScopeService;
 import com.tianji.promotion.service.ICouponService;
@@ -20,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -81,5 +84,38 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         List<CouponPageVO> couponPageVOList = BeanUtils.copyList(records, CouponPageVO.class);
         // 3. 返回数据
         return PageDTO.of(page, couponPageVOList);
+    }
+
+    /**
+     * 发放优惠券
+     */
+    @Override
+    public void grantCoupon(CouponIssueFormDTO couponIssueFormDTO) {
+        // 1. 查询优惠券
+        Coupon coupon = getById(couponIssueFormDTO.getId());
+        if (Objects.isNull(coupon)) {
+            throw new BadRequestException("优惠券不存在");
+        }
+        // 2. 判断优惠券状态，判断状态是否为暂停或待发放
+        if (!(coupon.getStatus() == CouponStatus.DRAFT) && !(coupon.getStatus() == CouponStatus.PAUSE)) {
+            throw new BadRequestException("优惠券状态错误");
+        }
+        // 3. 判断是否为立刻发放
+        // 如果开始发放时间为 null或者发放时间小于等于当前时间，则为立刻发放
+        LocalDateTime now = LocalDateTime.now();
+        boolean isInstantly = couponIssueFormDTO.getIssueBeginTime() == null
+                            || !couponIssueFormDTO.getIssueBeginTime().isAfter(now);
+        // 4. 更新优惠券
+        // 4.1 拷贝属性
+        coupon = BeanUtils.copyBean(couponIssueFormDTO, Coupon.class);
+        // 4.2 更新状态
+        if (isInstantly) {
+            coupon.setIssueBeginTime(now);
+            coupon.setStatus(CouponStatus.ISSUING);
+        } else {
+            coupon.setStatus(CouponStatus.UN_ISSUE);
+        }
+        // 4.3 写入数据库
+        updateById(coupon);
     }
 }
