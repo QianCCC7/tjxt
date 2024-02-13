@@ -1,5 +1,6 @@
 package com.tianji.promotion.service;
 
+import com.tianji.promotion.domain.dto.CouponFormDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface ICouponService extends IService<Coupon> {
 
+    void saveCoupon(CouponFormDTO couponFormDTO);
 }
