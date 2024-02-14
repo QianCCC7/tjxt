@@ -252,6 +252,20 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
     }
 
     /**
+     * 批量结束优惠券(删缓存)
+     */
+    @Override
+    public void finishIssueCouponBatch(List<Coupon> records) {
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            StringRedisConnection src = (StringRedisConnection) connection;// 强转为 StringRedisConnection
+            for (Coupon record : records) {
+                src.unlink(COUPON_CODE_SERIAL_KEY + record.getId());
+            }
+            return null;
+        });
+    }
+
+    /**
      * 暂停发布优惠券
      */
     @Override
@@ -277,5 +291,4 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         // 3.删除缓存
         redisTemplate.delete(COUPON_CODE_SERIAL_KEY + id);
     }
-
 }
