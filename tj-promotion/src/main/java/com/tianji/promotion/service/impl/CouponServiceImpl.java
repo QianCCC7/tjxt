@@ -13,10 +13,12 @@ import com.tianji.promotion.domain.pojo.CouponScope;
 import com.tianji.promotion.domain.query.CouponQuery;
 import com.tianji.promotion.domain.vo.CouponPageVO;
 import com.tianji.promotion.enums.CouponStatus;
+import com.tianji.promotion.enums.ObtainType;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.service.ICouponScopeService;
 import com.tianji.promotion.service.ICouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.tianji.promotion.service.IExchangeCodeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> implements ICouponService {
     private final ICouponScopeService couponScopeService;
+    private final IExchangeCodeService exchangeCodeService;
 
     /**
      * 新增优惠券
@@ -107,15 +110,20 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
                             || !couponIssueFormDTO.getIssueBeginTime().isAfter(now);
         // 4. 更新优惠券
         // 4.1 拷贝属性
-        coupon = BeanUtils.copyBean(couponIssueFormDTO, Coupon.class);
-        // 4.2 更新状态
+        Coupon c = BeanUtils.copyBean(couponIssueFormDTO, Coupon.class);
+        // 4.2 更新发布时间以及发布状态
         if (isInstantly) {
-            coupon.setIssueBeginTime(now);
-            coupon.setStatus(CouponStatus.ISSUING);
+            c.setIssueBeginTime(now);
+            c.setStatus(CouponStatus.ISSUING);
         } else {
-            coupon.setStatus(CouponStatus.UN_ISSUE);
+            c.setStatus(CouponStatus.UN_ISSUE);
         }
         // 4.3 写入数据库
-        updateById(coupon);
+        updateById(c);
+        // 5. 判断是否需要生成兑换码
+        if (coupon.getObtainWay() == ObtainType.ISSUE && coupon.getStatus() == CouponStatus.DRAFT) {
+            coupon.setIssueBeginTime(c.getIssueBeginTime());
+            exchangeCodeService.asyncGenerateExchangeCode(coupon);
+        }
     }
 }
