@@ -25,4 +25,6 @@ public interface ICouponService extends IService<Coupon> {
     void grantCoupon(CouponIssueFormDTO couponIssueFormDTO);
 
     void updateCoupon(CouponFormDTO couponFormDTO);
+
+    void deleteCouponById(Long id);
 }
