@@ -25,6 +25,7 @@ import com.tianji.promotion.service.ICouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.service.IExchangeCodeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -46,6 +47,7 @@ import static com.tianji.promotion.constants.PromotionConstants.COUPON_CODE_SERI
  * @since 2024-02-07
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> implements ICouponService {
     private final ICouponScopeService couponScopeService;
@@ -248,4 +250,32 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
             return null;
         });
     }
+
+    /**
+     * 暂停发布优惠券
+     */
+    @Override
+    public void pauseIssueCoupon(Long id) {
+        // 1.查询优惠券
+        Coupon coupon = getById(id);
+        if (Objects.isNull(coupon)) {
+            throw new BadRequestException("优惠券不存在");
+        }
+        // 只有已发放的优惠券可以暂停发布
+        if (coupon.getStatus() != CouponStatus.UN_ISSUE || coupon.getStatus() != CouponStatus.ISSUING) {
+            return;
+        }
+        // 2.更新优惠券状态
+        boolean success = lambdaUpdate()
+                .eq(Coupon::getId, id)
+                .set(Coupon::getStatus, CouponStatus.PAUSE)
+                .in(Coupon::getStatus, CouponStatus.UN_ISSUE, CouponStatus.ISSUING)
+                .update();
+        if (!success) {
+            log.error("重复暂停发布优惠券{}", id);
+        }
+        // 3.删除缓存
+        redisTemplate.delete(COUPON_CODE_SERIAL_KEY + id);
+    }
+
 }

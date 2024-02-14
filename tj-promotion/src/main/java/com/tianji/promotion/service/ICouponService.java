@@ -34,4 +34,6 @@ public interface ICouponService extends IService<Coupon> {
     CouponDetailVO queryCouponDetailById(Long id);
 
     void beginIssueCouponBatch(List<Coupon> records);
+
+    void pauseIssueCoupon(Long id);
 }
