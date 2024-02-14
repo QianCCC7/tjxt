@@ -7,6 +7,7 @@ import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.BeanUtils;
 import com.tianji.common.utils.CollUtils;
+import com.tianji.common.utils.DateUtils;
 import com.tianji.common.utils.StringUtils;
 import com.tianji.promotion.domain.dto.CouponFormDTO;
 import com.tianji.promotion.domain.dto.CouponIssueFormDTO;
@@ -24,16 +25,17 @@ import com.tianji.promotion.service.ICouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.service.IExchangeCodeService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.connection.StringRedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.tianji.promotion.constants.PromotionConstants.COUPON_CODE_SERIAL_KEY;
 
 /**
  * <p>
@@ -49,6 +51,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
     private final ICouponScopeService couponScopeService;
     private final IExchangeCodeService exchangeCodeService;
     private final CategoryCache categoryCache;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 新增优惠券
@@ -214,5 +217,35 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
                 .collect(Collectors.toList());
         couponDetailVO.setScopes(couponScopeVOList);
         return couponDetailVO;
+    }
+
+    /**
+     * 批量发布优惠券
+     */
+    @Override
+    public void beginIssueCouponBatch(List<Coupon> records) {
+        // 1. 批量更新优惠券发布状态为发布状态
+        if (CollUtils.isEmpty(records)) {
+            return;
+        }
+        for (Coupon record : records) {
+            record.setStatus(CouponStatus.ISSUING);
+        }
+        updateBatchById(records);
+        // 2. 批量缓存
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            StringRedisConnection src = (StringRedisConnection) connection;// 强转为 StringRedisConnection
+            for (Coupon record : records) {
+                Map<String, String> map = new HashMap<>(4);
+                map.put("issueBeginTime", String.valueOf(DateUtils.toEpochMilli(record.getIssueBeginTime())));
+                map.put("issueEndTime", String.valueOf(DateUtils.toEpochMilli(record.getIssueEndTime())));
+                map.put("totalNum", String.valueOf(record.getTotalNum()));
+                map.put("userLimit", String.valueOf(record.getUserLimit()));
+                // 写入缓存
+                // mSet用于同时设置多个键值对
+                src.hMSet(COUPON_CODE_SERIAL_KEY + record.getId(), map);
+            }
+            return null;
+        });
     }
 }

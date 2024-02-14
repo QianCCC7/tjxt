@@ -9,6 +9,8 @@ import com.tianji.promotion.domain.query.CouponQuery;
 import com.tianji.promotion.domain.vo.CouponDetailVO;
 import com.tianji.promotion.domain.vo.CouponPageVO;
 
+import java.util.List;
+
 /**
  * <p>
  * 优惠券的规则信息 服务类
@@ -30,4 +32,6 @@ public interface ICouponService extends IService<Coupon> {
     void deleteCouponById(Long id);
 
     CouponDetailVO queryCouponDetailById(Long id);
+
+    void beginIssueCouponBatch(List<Coupon> records);
 }
