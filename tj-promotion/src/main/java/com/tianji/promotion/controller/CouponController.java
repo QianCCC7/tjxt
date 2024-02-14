@@ -47,4 +47,10 @@ public class CouponController {
     public void grantCoupon(@RequestBody @Valid CouponIssueFormDTO couponIssueFormDTO) {
         couponService.grantCoupon(couponIssueFormDTO);
     }
+
+    @ApiOperation("修改优惠券")
+    @PutMapping("/{id}")
+    public void updateCoupon(@RequestBody @Valid CouponFormDTO couponFormDTO) {
+        couponService.updateCoupon(couponFormDTO);
+    }
 }

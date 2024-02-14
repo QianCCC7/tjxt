@@ -23,4 +23,6 @@ public interface ICouponService extends IService<Coupon> {
     PageDTO<CouponPageVO> queryCouponByPage(CouponQuery query);
 
     void grantCoupon(CouponIssueFormDTO couponIssueFormDTO);
+
+    void updateCoupon(CouponFormDTO couponFormDTO);
 }

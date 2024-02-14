@@ -53,7 +53,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         // 1. 保存优惠券信息
         Coupon coupon = BeanUtils.copyBean(couponFormDTO, Coupon.class);
         save(coupon);
-        // 2. 保存优惠券范围信息
+        // 2. 保存优惠券使用范围信息
         if (!couponFormDTO.getSpecific()) {
             return;// 没有限定范围
         }
@@ -125,5 +125,38 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
             coupon.setIssueBeginTime(c.getIssueBeginTime());
             exchangeCodeService.asyncGenerateExchangeCode(coupon);
         }
+    }
+
+    /**
+     * 更新优惠券
+     */
+    @Override
+    public void updateCoupon(CouponFormDTO couponFormDTO) {
+        // 1. 查询优惠券
+        Coupon coupon = getById(couponFormDTO.getId());
+        if (Objects.isNull(coupon)) {
+            throw new BadRequestException("优惠券不存在");
+        }
+        if (coupon.getStatus() != CouponStatus.DRAFT) {
+            // 只有待发放的优惠券才可以修改
+            throw new BadRequestException("只有待发放的优惠券才可以修改");
+        }
+        // 2. 更新优惠券信息
+        Coupon c = BeanUtils.copyBean(couponFormDTO, Coupon.class);
+        c.setId(coupon.getId());
+        updateById(c);
+        // 3. 更新优惠券使用范围信息
+        if (!couponFormDTO.getSpecific()) {
+            return;// 没有限定范围
+        }
+        List<Long> scopes = couponFormDTO.getScopes();
+        if (CollUtils.isEmpty(scopes)) {
+            throw new BadRequestException("限定范围不能为空！");
+        }
+        List<CouponScope> couponScopeList = scopes.stream().map(bizId -> new CouponScope()
+                        .setBizId(bizId)
+                        .setCouponId(coupon.getId()))
+                .collect(Collectors.toList());
+        couponScopeService.updateBatchById(couponScopeList);
     }
 }
