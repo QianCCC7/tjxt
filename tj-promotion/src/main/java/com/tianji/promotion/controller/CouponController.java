@@ -5,6 +5,7 @@ import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.promotion.domain.dto.CouponFormDTO;
 import com.tianji.promotion.domain.dto.CouponIssueFormDTO;
 import com.tianji.promotion.domain.query.CouponQuery;
+import com.tianji.promotion.domain.vo.CouponDetailVO;
 import com.tianji.promotion.domain.vo.CouponPageVO;
 import com.tianji.promotion.service.ICouponService;
 import io.swagger.annotations.Api;
@@ -58,5 +59,11 @@ public class CouponController {
     @DeleteMapping("/{id}")
     public void deleteCouponById(@PathVariable("id") Long id) {
         couponService.deleteCouponById(id);
+    }
+
+    @ApiOperation("根据id查询指定优惠券信息")
+    @GetMapping("/{id}")
+    public CouponDetailVO queryCouponDetailById(@PathVariable("id") Long id) {
+        return couponService.queryCouponDetailById(id);
     }
 }

@@ -2,6 +2,7 @@ package com.tianji.promotion.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.api.cache.CategoryCache;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.BeanUtils;
@@ -12,7 +13,9 @@ import com.tianji.promotion.domain.dto.CouponIssueFormDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.CouponScope;
 import com.tianji.promotion.domain.query.CouponQuery;
+import com.tianji.promotion.domain.vo.CouponDetailVO;
 import com.tianji.promotion.domain.vo.CouponPageVO;
+import com.tianji.promotion.domain.vo.CouponScopeVO;
 import com.tianji.promotion.enums.CouponStatus;
 import com.tianji.promotion.enums.ObtainType;
 import com.tianji.promotion.mapper.CouponMapper;
@@ -26,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -44,6 +48,7 @@ import java.util.stream.Collectors;
 public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> implements ICouponService {
     private final ICouponScopeService couponScopeService;
     private final IExchangeCodeService exchangeCodeService;
+    private final CategoryCache categoryCache;
 
     /**
      * 新增优惠券
@@ -180,5 +185,34 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         }
         couponScopeService.remove(new LambdaQueryWrapper<CouponScope>()
                 .eq(CouponScope::getCouponId, id));
+    }
+
+    /**
+     * 根据id查询指定优惠券信息
+     */
+    @Override
+    public CouponDetailVO queryCouponDetailById(Long id) {
+        // 1. 查询优惠券数据
+        Coupon coupon = getById(id);
+        if (Objects.isNull(coupon)) {
+            throw new BadRequestException("优惠券不存在");
+        }
+        // 2. 封装优惠券数据
+        CouponDetailVO couponDetailVO = BeanUtils.copyBean(coupon, CouponDetailVO.class);
+        // 3. 封装优惠券范围数据
+        if (!coupon.getSpecific()) {
+            return couponDetailVO;
+        }
+        List<CouponScope> list = couponScopeService.lambdaQuery()
+                .eq(CouponScope::getCouponId, id)
+                .list();
+        if (CollUtils.isEmpty(list)) {
+            return couponDetailVO;
+        }
+        List<CouponScopeVO> couponScopeVOList = list.stream().map(CouponScope::getId) // 取出所有 id
+                .map(couponScopeId -> new CouponScopeVO(couponScopeId, categoryCache.getNameByLv3Id(couponScopeId)))
+                .collect(Collectors.toList());
+        couponDetailVO.setScopes(couponScopeVOList);
+        return couponDetailVO;
     }
 }

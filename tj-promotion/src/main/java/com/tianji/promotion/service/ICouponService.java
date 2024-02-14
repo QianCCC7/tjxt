@@ -6,6 +6,7 @@ import com.tianji.promotion.domain.dto.CouponIssueFormDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.tianji.promotion.domain.query.CouponQuery;
+import com.tianji.promotion.domain.vo.CouponDetailVO;
 import com.tianji.promotion.domain.vo.CouponPageVO;
 
 /**
@@ -27,4 +28,6 @@ public interface ICouponService extends IService<Coupon> {
     void updateCoupon(CouponFormDTO couponFormDTO);
 
     void deleteCouponById(Long id);
+
+    CouponDetailVO queryCouponDetailById(Long id);
 }
