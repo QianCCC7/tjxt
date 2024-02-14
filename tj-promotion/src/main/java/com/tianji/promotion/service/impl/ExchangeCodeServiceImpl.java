@@ -1,8 +1,14 @@
 package com.tianji.promotion.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.common.domain.dto.PageDTO;
+import com.tianji.common.utils.BeanUtils;
+import com.tianji.common.utils.CollUtils;
 import com.tianji.promotion.constants.PromotionConstants;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.ExchangeCode;
+import com.tianji.promotion.domain.query.CodeQuery;
+import com.tianji.promotion.domain.vo.ExchangeCodeVO;
 import com.tianji.promotion.mapper.ExchangeCodeMapper;
 import com.tianji.promotion.service.IExchangeCodeService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -55,5 +61,22 @@ public class ExchangeCodeServiceImpl extends ServiceImpl<ExchangeCodeMapper, Exc
         }
         // 4. 写入数据库
         saveBatch(list);
+    }
+
+    /**
+     * 分页查询兑换码
+     */
+    @Override
+    public PageDTO<ExchangeCodeVO> queryExchangeCodePage(CodeQuery codeQuery) {
+        Page<ExchangeCode> page = lambdaQuery()
+                .eq(ExchangeCode::getExchangeTargetId, codeQuery.getCouponId())
+                .eq(ExchangeCode::getStatus, codeQuery.getStatus())
+                .page(codeQuery.toMpPage());
+        List<ExchangeCode> records = page.getRecords();
+        if (CollUtils.isEmpty(records)) {
+            return PageDTO.empty(page);
+        }
+        List<ExchangeCodeVO> exchangeCodeVOList = BeanUtils.copyList(records, ExchangeCodeVO.class);
+        return PageDTO.of(page, exchangeCodeVOList);
     }
 }
