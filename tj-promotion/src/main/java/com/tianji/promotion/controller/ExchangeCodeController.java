@@ -7,6 +7,7 @@ import com.tianji.promotion.domain.vo.ExchangeCodeVO;
 import com.tianji.promotion.service.IExchangeCodeService;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -29,7 +30,7 @@ public class ExchangeCodeController {
     private final IExchangeCodeService exchangeCodeService;
 
     @ApiOperation("分页查询兑换码")
-    @PutMapping("/page")
+    @GetMapping("/page")
     public PageDTO<ExchangeCodeVO> queryExchangeCodePage(@Valid CodeQuery codeQuery) {
         return exchangeCodeService.queryExchangeCodePage(codeQuery);
     }
