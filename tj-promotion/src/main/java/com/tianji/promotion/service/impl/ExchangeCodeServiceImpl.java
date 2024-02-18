@@ -13,6 +13,7 @@ import com.tianji.promotion.mapper.ExchangeCodeMapper;
 import com.tianji.promotion.service.IExchangeCodeService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.utils.CodeUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.tianji.promotion.constants.PromotionConstants.COUPON_CODE_MAP_KEY;
 
 /**
  * <p>
@@ -32,9 +35,11 @@ import java.util.List;
 @Service
 public class ExchangeCodeServiceImpl extends ServiceImpl<ExchangeCodeMapper, ExchangeCode> implements IExchangeCodeService {
     private BoundValueOperations<String, String> redisTemplate;
+    private final StringRedisTemplate bitMapRedisTemplate;
 
     public ExchangeCodeServiceImpl(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate.boundValueOps(PromotionConstants.COUPON_CODE_SERIAL_KEY);
+        this.bitMapRedisTemplate = redisTemplate;
     }
 
     /**
@@ -78,5 +83,16 @@ public class ExchangeCodeServiceImpl extends ServiceImpl<ExchangeCodeMapper, Exc
         }
         List<ExchangeCodeVO> exchangeCodeVOList = BeanUtils.copyList(records, ExchangeCodeVO.class);
         return PageDTO.of(page, exchangeCodeVOList);
+    }
+
+    /**
+     * 更新兑换码状态
+     * @param serialNum 兑换码的序列号
+     * @param mark 将要更新的状态：使用或者未使用
+     */
+    @Override
+    public boolean updateExchangeCodeMark(long serialNum, boolean mark) {
+        Boolean setMark = bitMapRedisTemplate.opsForValue().setBit(COUPON_CODE_MAP_KEY, serialNum, mark);
+        return setMark != null && setMark;
     }
 }

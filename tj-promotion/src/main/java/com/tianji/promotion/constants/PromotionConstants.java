@@ -6,4 +6,8 @@ public class PromotionConstants {
      */
     public final static String COUPON_CODE_SERIAL_KEY = "coupon:code:serial";
 
+    /**
+     * 校验兑换码是否使用过的 key
+     */
+    public final static String COUPON_CODE_MAP_KEY = "coupon:code:map";
 }

@@ -1,13 +1,18 @@
 package com.tianji.promotion.service.impl;
 
 import com.tianji.common.exceptions.BadRequestException;
+import com.tianji.common.exceptions.BizIllegalException;
 import com.tianji.common.utils.UserContext;
 import com.tianji.promotion.domain.pojo.Coupon;
+import com.tianji.promotion.domain.pojo.ExchangeCode;
 import com.tianji.promotion.domain.pojo.UserCoupon;
+import com.tianji.promotion.enums.ExchangeCodeStatus;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.mapper.UserCouponMapper;
+import com.tianji.promotion.service.IExchangeCodeService;
 import com.tianji.promotion.service.IUserCouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.tianji.promotion.utils.CodeUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCoupon> implements IUserCouponService {
     private final CouponMapper couponMapper;
+    private final IExchangeCodeService exchangeCodeService;
 
     /**
      * 用户领取优惠券
@@ -48,24 +54,29 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         if (coupon.getIssueNum() >= coupon.getTotalNum()) {
             throw new BadRequestException("优惠券库存不足");
         }
-        // 4. 校验是否超过限领数
-        // 4.1 统计当前用户对当前优惠券已经领取的数量
+        // 4. 校验并且创建用户券
+        checkAndCreateUserCoupon(coupon, now);
+    }
+
+    private void checkAndCreateUserCoupon(Coupon coupon, LocalDateTime now) {
+        // 1. 校验是否超过限领数
+        // 1.1 统计当前用户对当前优惠券已经领取的数量
         Long userId = UserContext.getUser();
         Integer count = lambdaQuery()
                 .eq(UserCoupon::getUserId, userId)
-                .eq(UserCoupon::getCouponId, couponId)
+                .eq(UserCoupon::getCouponId, coupon.getId())
                 .count();
-        // 4.2 判断是否超限
+        // 1.2 判断是否超限
         if (Objects.nonNull(count) && count >= coupon.getUserLimit()) {
             throw new BadRequestException("已超过领取该优惠券上限");
         }
-        // 5. 更新优惠券发放数量+1
-        couponMapper.incrIssueNum(couponId);
-        // 6. 更新数据库
+        // 2. 更新优惠券发放数量+1
+        couponMapper.incrIssueNum(coupon.getId());
+        // 3. 更新数据库
         UserCoupon userCoupon = new UserCoupon();
         userCoupon.setUserId(userId);
-        userCoupon.setCouponId(couponId);
-        // 6.1 设置优惠券有效期
+        userCoupon.setCouponId(coupon.getId());
+        // 3.1 设置优惠券有效期
         LocalDateTime termBeginTime = coupon.getTermBeginTime();
         LocalDateTime termEndTime = coupon.getTermEndTime();
         if (Objects.isNull(termBeginTime)) {// 有效期为天数
@@ -75,5 +86,47 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         userCoupon.setTermBeginTime(termBeginTime);
         userCoupon.setTermEndTime(termEndTime);
         save(userCoupon);
+    }
+
+    /**
+     * 用户通过兑换码兑换优惠券
+     */
+    @Override
+    @Transactional
+    public void receiveCouponByExchangeCode(String code) {
+        // 1. 校验并解析兑换码
+        long serialNum = CodeUtil.parseCode(code);
+        // 2. 校验是否已经兑换
+        // 逻辑：无论是否兑换过都将其标记为 true，exchanged返回的是标记前的值
+        // 如果在标记前就为 true说明已被兑换，则抛出异常
+        boolean exchanged = exchangeCodeService.updateExchangeCodeMark(serialNum, true);
+        if (exchanged) {
+            throw new BizIllegalException("兑换码已被兑换");
+        }
+        try {
+            // 3. 查询兑换码
+            ExchangeCode exchangeCode = exchangeCodeService.getById(serialNum);
+            // 4. 是否存在
+            if (Objects.isNull(exchangeCode)) {
+                throw new BizIllegalException("兑换码不存在");
+            }
+            // 5. 校验并且创建用户券
+            LocalDateTime now = LocalDateTime.now();
+            if (exchangeCode.getExpiredTime().isBefore(now)) {
+                throw new BizIllegalException("兑换码已过期");
+            }
+            Coupon coupon = couponMapper.selectById(exchangeCode.getExchangeTargetId());
+            checkAndCreateUserCoupon(coupon, LocalDateTime.now());
+            // 6. 更新兑换码状态(mysql+redis)
+            exchangeCodeService.lambdaUpdate()
+                    .set(ExchangeCode::getUserId, UserContext.getUser())
+                    .set(ExchangeCode::getStatus, ExchangeCodeStatus.USED)
+                    .eq(ExchangeCode::getId, serialNum)
+                    .update();
+        } catch (Exception e) {
+            // 出现异常，将兑换标记标志位 false，因为在上面exchangeCodeService方法中标记为 true了
+            exchangeCodeService.updateExchangeCodeMark(serialNum, false);
+            throw e;
+        }
     }
 }
