@@ -7,6 +7,8 @@
             `id`      BIGINT NOT NULL AUTO_INCREMENT COMMENT '榜单id',
             `user_id` BIGINT NOT NULL COMMENT '学生id',
             `points`  INT    NOT NULL COMMENT '积分值',
+            `rank`  tinyint    NOT NULL COMMENT '名次，只记录赛季前100',
+            `season`  smallint    NOT NULL COMMENT '赛季，例如 1,就是第一赛季，2-就是第二赛季',
             PRIMARY KEY (`id`) USING BTREE,
             INDEX `idx_user_id` (`user_id`) USING BTREE
         )
