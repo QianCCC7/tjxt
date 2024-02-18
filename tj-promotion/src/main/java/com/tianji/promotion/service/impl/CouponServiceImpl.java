@@ -135,7 +135,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         updateById(c);
         // 5. 判断是否需要生成兑换码
         if (coupon.getObtainWay() == ObtainType.ISSUE && coupon.getStatus() == CouponStatus.DRAFT) {
-            coupon.setIssueBeginTime(c.getIssueBeginTime());
+            coupon.setIssueEndTime(c.getIssueEndTime());
             exchangeCodeService.asyncGenerateExchangeCode(coupon);
         }
     }
