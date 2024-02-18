@@ -42,3 +42,5 @@ tj:
   auth:
     resource:
       enable: true
+      excludeLoginPaths:
+        - /coupons/list
