@@ -5,25 +5,26 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.cache.CategoryCache;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
-import com.tianji.common.utils.BeanUtils;
-import com.tianji.common.utils.CollUtils;
-import com.tianji.common.utils.DateUtils;
-import com.tianji.common.utils.StringUtils;
+import com.tianji.common.utils.*;
 import com.tianji.promotion.domain.dto.CouponFormDTO;
 import com.tianji.promotion.domain.dto.CouponIssueFormDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.CouponScope;
+import com.tianji.promotion.domain.pojo.UserCoupon;
 import com.tianji.promotion.domain.query.CouponQuery;
 import com.tianji.promotion.domain.vo.CouponDetailVO;
 import com.tianji.promotion.domain.vo.CouponPageVO;
 import com.tianji.promotion.domain.vo.CouponScopeVO;
+import com.tianji.promotion.domain.vo.CouponVO;
 import com.tianji.promotion.enums.CouponStatus;
 import com.tianji.promotion.enums.ObtainType;
+import com.tianji.promotion.enums.UserCouponStatus;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.service.ICouponScopeService;
 import com.tianji.promotion.service.ICouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.service.IExchangeCodeService;
+import com.tianji.promotion.service.IUserCouponService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.StringRedisConnection;
@@ -54,6 +55,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
     private final IExchangeCodeService exchangeCodeService;
     private final CategoryCache categoryCache;
     private final StringRedisTemplate redisTemplate;
+    private final IUserCouponService userCouponService;
 
     /**
      * 新增优惠券
@@ -290,5 +292,49 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         }
         // 3.删除缓存
         redisTemplate.delete(COUPON_CODE_SERIAL_KEY + id);
+    }
+
+    /**
+     * 用户端分页查看发放中且手动领取的优惠券
+     */
+    @Override
+    public List<CouponVO> queryIssuingCoupon() {
+        // 1. 查询发放中且手动领取的优惠券
+        List<Coupon> couponList = lambdaQuery()
+                .eq(Coupon::getStatus, CouponStatus.ISSUING)
+                .eq(Coupon::getObtainWay, ObtainType.PUBLIC)
+                .list();
+        if (CollUtils.isEmpty(couponList)) {
+            return CollUtils.emptyList();
+        }
+        // 2. 统计当前用户已经领取的优惠券信息
+        List<Long> couponIdList = couponList.stream().map(Coupon::getId).collect(Collectors.toList());
+        // 2.1 查询当前用户已经领取的优惠券数据
+        List<UserCoupon> userCouponList = userCouponService.lambdaQuery()
+                .eq(UserCoupon::getUserId, UserContext.getUser())
+                .in(UserCoupon::getCouponId, couponIdList)
+                .list();
+        // 2.2 统计当前用户对指定优惠券领取的数量
+        Map<Long, Long> issuedMap = userCouponList.stream()
+                .collect(Collectors.groupingBy(UserCoupon::getCouponId, Collectors.counting()));
+        // 2.3 统计当前用户对优惠券已经领取并未使用的数量
+        Map<Long, Long> unusedMap = userCouponList.stream()
+                .filter(uc -> uc.getStatus() == UserCouponStatus.UNUSED)
+                .collect(Collectors.groupingBy(UserCoupon::getCouponId, Collectors.counting()));
+        // 3. 封装 vo数据
+        List<CouponVO> couponVOList = new ArrayList<>(couponList.size());
+        for (Coupon coupon : couponList) {
+            // 3.1 拷贝基础属性
+            CouponVO couponVO = BeanUtils.copyBean(coupon, CouponVO.class);
+            // 3.2 是否可以领取:
+            // 3.2.1 优惠券已被领取的数量 < 优惠券总的数量
+            // 3.2.2 用户领取该优惠券的数量 < 每个用户限领的优惠券数量
+            couponVO.setAvailable(coupon.getIssueNum() < coupon.getTotalNum()
+                                && issuedMap.getOrDefault(coupon.getId(), 0L) < coupon.getUserLimit());
+            // 3.3 是否可以使用:是否存在已经领取且未使用的优惠券
+            couponVO.setReceived(unusedMap.getOrDefault(coupon.getId(), 0L) > 0);
+            couponVOList.add(couponVO);
+        }
+        return couponVOList;
     }
 }
