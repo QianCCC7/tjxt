@@ -79,7 +79,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         // 3.1 设置优惠券有效期
         LocalDateTime termBeginTime = coupon.getTermBeginTime();
         LocalDateTime termEndTime = coupon.getTermEndTime();
-        if (Objects.isNull(termBeginTime)) {// 有效期为天数
+        if (Objects.isNull(termBeginTime)) {// 为空则表示有效期为天数
             termBeginTime = now;
             termEndTime = termBeginTime.plusDays(coupon.getTermDays());
         }
@@ -94,7 +94,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
     @Override
     @Transactional
     public void receiveCouponByExchangeCode(String code) {
-        // 1. 校验并解析兑换码
+        // 1. 校验并解析兑换码，解析出每个兑换码的唯一序列号
         long serialNum = CodeUtil.parseCode(code);
         // 2. 校验是否已经兑换
         // 逻辑：无论是否兑换过都将其标记为 true，exchanged返回的是标记前的值

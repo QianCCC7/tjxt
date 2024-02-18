@@ -307,8 +307,10 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         if (CollUtils.isEmpty(couponList)) {
             return CollUtils.emptyList();
         }
-        // 2. 统计当前用户已经领取的优惠券信息
-        List<Long> couponIdList = couponList.stream().map(Coupon::getId).collect(Collectors.toList());
+        // 2. 统计当前用户已经领取的优惠券信息(用于前端动态展示优惠券状态)
+        List<Long> couponIdList = couponList.stream()
+                .map(Coupon::getId)
+                .collect(Collectors.toList());
         // 2.1 查询当前用户已经领取的优惠券数据
         List<UserCoupon> userCouponList = userCouponService.lambdaQuery()
                 .eq(UserCoupon::getUserId, UserContext.getUser())

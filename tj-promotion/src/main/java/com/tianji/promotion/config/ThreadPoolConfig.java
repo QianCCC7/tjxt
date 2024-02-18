@@ -1,5 +1,6 @@
 package com.tianji.promotion.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -11,6 +12,7 @@ public class ThreadPoolConfig {
     /**
      * 异步生成兑换码的线程池
      */
+    @Bean
     public Executor generateExchangeCodeExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 1. 核心线程数量
