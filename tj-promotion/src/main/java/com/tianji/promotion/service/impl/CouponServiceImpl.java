@@ -277,8 +277,8 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         if (Objects.isNull(coupon)) {
             throw new BadRequestException("优惠券不存在");
         }
-        // 只有已发放的优惠券可以暂停发布
-        if (coupon.getStatus() != CouponStatus.UN_ISSUE || coupon.getStatus() != CouponStatus.ISSUING) {
+        // 即已发放的优惠券可以暂停发布(未开始或者发放中的可以暂停)
+        if (coupon.getStatus() != CouponStatus.UN_ISSUE && coupon.getStatus() != CouponStatus.ISSUING) {
             return;
         }
         // 2.更新优惠券状态
