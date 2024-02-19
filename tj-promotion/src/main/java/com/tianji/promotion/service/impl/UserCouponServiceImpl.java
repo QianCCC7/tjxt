@@ -14,6 +14,7 @@ import com.tianji.promotion.service.IUserCouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.utils.CodeUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,11 +57,13 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         // 4. 校验并且创建用户券
         Long userId = UserContext.getUser();
         synchronized (userId.toString().intern()) {
-            checkAndCreateUserCoupon(coupon, userId);
+            IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
+            userCouponService.checkAndCreateUserCoupon(coupon, userId);
         }
     }
 
     @Transactional
+    @Override
     public void checkAndCreateUserCoupon(Coupon coupon, Long userId) {
         // 注意这里要转为字符串，因为 userId可能是变量，转为字符串变为常量
         // 1. 校验是否超过限领数
