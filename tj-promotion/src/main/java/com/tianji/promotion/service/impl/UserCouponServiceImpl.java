@@ -38,7 +38,6 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
      * 用户领取优惠券
      */
     @Override
-    @Transactional
     public void receiveCoupon(Long couponId) {
         // 1. 查询优惠券
         Coupon coupon = couponMapper.selectById(couponId);
@@ -55,13 +54,17 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             throw new BadRequestException("优惠券库存不足");
         }
         // 4. 校验并且创建用户券
-        checkAndCreateUserCoupon(coupon, now);
+        Long userId = UserContext.getUser();
+        synchronized (userId.toString().intern()) {
+            checkAndCreateUserCoupon(coupon, userId);
+        }
     }
 
-    private void checkAndCreateUserCoupon(Coupon coupon, LocalDateTime now) {
+    @Transactional
+    public void checkAndCreateUserCoupon(Coupon coupon, Long userId) {
+        // 注意这里要转为字符串，因为 userId可能是变量，转为字符串变为常量
         // 1. 校验是否超过限领数
         // 1.1 统计当前用户对当前优惠券已经领取的数量
-        Long userId = UserContext.getUser();
         Integer count = lambdaQuery()
                 .eq(UserCoupon::getUserId, userId)
                 .eq(UserCoupon::getCouponId, coupon.getId())
@@ -83,7 +86,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         LocalDateTime termBeginTime = coupon.getTermBeginTime();
         LocalDateTime termEndTime = coupon.getTermEndTime();
         if (Objects.isNull(termBeginTime)) {// 为空则表示有效期为天数
-            termBeginTime = now;
+            termBeginTime = LocalDateTime.now();
             termEndTime = termBeginTime.plusDays(coupon.getTermDays());
         }
         userCoupon.setTermBeginTime(termBeginTime);
@@ -119,7 +122,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
                 throw new BizIllegalException("兑换码已过期");
             }
             Coupon coupon = couponMapper.selectById(exchangeCode.getExchangeTargetId());
-            checkAndCreateUserCoupon(coupon, LocalDateTime.now());
+            checkAndCreateUserCoupon(coupon, UserContext.getUser());
             // 6. 更新兑换码状态(mysql+redis)
             exchangeCodeService.lambdaUpdate()
                     .set(ExchangeCode::getUserId, UserContext.getUser())
