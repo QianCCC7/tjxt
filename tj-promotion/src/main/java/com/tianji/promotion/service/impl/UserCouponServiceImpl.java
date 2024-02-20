@@ -135,10 +135,14 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
                 throw new BizIllegalException("兑换码已过期");
             }
             Coupon coupon = couponMapper.selectById(exchangeCode.getExchangeTargetId());
-            checkAndCreateUserCoupon(coupon, UserContext.getUser());
+            Long userId = UserContext.getUser();
+            synchronized (userId.toString().intern()) {
+                IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
+                userCouponService.checkAndCreateUserCoupon(coupon, userId);
+            }
             // 6. 更新兑换码状态(mysql+redis)
             exchangeCodeService.lambdaUpdate()
-                    .set(ExchangeCode::getUserId, UserContext.getUser())
+                    .set(ExchangeCode::getUserId, userId)
                     .set(ExchangeCode::getStatus, ExchangeCodeStatus.USED)
                     .eq(ExchangeCode::getId, serialNum)
                     .update();
