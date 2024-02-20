@@ -1,8 +1,11 @@
 package com.tianji.promotion.service;
 
+import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.UserCoupon;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.tianji.promotion.domain.query.UserCouponQuery;
+import com.tianji.promotion.domain.vo.CouponVO;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -20,4 +23,6 @@ public interface IUserCouponService extends IService<UserCoupon> {
     void checkAndCreateUserCoupon(Coupon coupon, Long userId);
 
     void receiveCouponByExchangeCode(String code);
+
+    PageDTO<CouponVO> queryMyCoupon(UserCouponQuery query);
 }

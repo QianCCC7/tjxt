@@ -1,11 +1,18 @@
 package com.tianji.promotion.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.OrderItem;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.exceptions.BizIllegalException;
+import com.tianji.common.utils.BeanUtils;
+import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.ExchangeCode;
 import com.tianji.promotion.domain.pojo.UserCoupon;
+import com.tianji.promotion.domain.query.UserCouponQuery;
+import com.tianji.promotion.domain.vo.CouponVO;
 import com.tianji.promotion.enums.ExchangeCodeStatus;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.mapper.UserCouponMapper;
@@ -19,7 +26,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -137,5 +147,28 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             exchangeCodeService.updateExchangeCodeMark(serialNum, false);
             throw e;
         }
+    }
+
+    /**
+     * 查询我的优惠券
+     */
+    @Override
+    public PageDTO<CouponVO> queryMyCoupon(UserCouponQuery query) {
+        // 1. 获取当前用户
+        Long userId = UserContext.getUser();
+        // 2. 获取当前用户的用户券
+        Page<UserCoupon> page = lambdaQuery()
+                .eq(UserCoupon::getUserId, userId)
+                .eq(UserCoupon::getStatus, query.getStatus())
+                .page(query.toMpPage(new OrderItem("term_end_time", true)));
+        List<UserCoupon> records = page.getRecords();
+        if (CollUtils.isEmpty(records)) {
+            return PageDTO.empty(page);
+        }
+        // 3. 封装 vo
+        Set<Long> set = records.stream().map(UserCoupon::getCouponId).collect(Collectors.toSet());
+        List<Coupon> couponList = couponMapper.selectBatchIds(set);
+        List<CouponVO> couponVOList = BeanUtils.copyList(couponList, CouponVO.class);
+        return PageDTO.of(page, couponVOList);
     }
 }
