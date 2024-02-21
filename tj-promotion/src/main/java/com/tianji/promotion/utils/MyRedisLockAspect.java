@@ -22,11 +22,11 @@ public class MyRedisLockAspect implements Ordered {
         // 1. 创建锁对象
         RLock lock = myRedisLockFactory.getLock(myRedisLock.lockType(), myRedisLock.name());
         // 2. 尝试获取锁
-        boolean hasLock = lock.tryLock(myRedisLock.waitTime(), myRedisLock.leaseTime(), myRedisLock.unit());
+        boolean hasLock = myRedisLock.lockStrategy().tryLock(lock, myRedisLock);
         // 3. 判断是否成功
         if (!hasLock) {
             // 3.1 失败
-            throw new BizIllegalException("请求太频繁");
+            return null;
         }
         try {
             // 3.2 成功，执行业务
