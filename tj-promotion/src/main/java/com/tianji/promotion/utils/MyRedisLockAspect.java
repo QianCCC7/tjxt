@@ -15,11 +15,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MyRedisLockAspect implements Ordered {
     private final RedissonClient redissonClient;
+    private final MyRedisLockFactory myRedisLockFactory;
 
     @Around("@annotation(myRedisLock)")
     public Object tryLock(ProceedingJoinPoint joinPoint, MyRedisLock myRedisLock) throws Throwable {
         // 1. 创建锁对象
-        RLock lock = redissonClient.getLock(myRedisLock.name());
+        RLock lock = myRedisLockFactory.getLock(myRedisLock.lockType(), myRedisLock.name());
         // 2. 尝试获取锁
         boolean hasLock = lock.tryLock(myRedisLock.waitTime(), myRedisLock.leaseTime(), myRedisLock.unit());
         // 3. 判断是否成功

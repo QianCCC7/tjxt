@@ -16,4 +16,6 @@ public @interface MyRedisLock {
     long leaseTime() default -1;// 锁超时释放时间，设置为-1就仍然使用Redisson的默认值
 
     TimeUnit unit() default TimeUnit.SECONDS;// 时间单位
+
+    MyRedisLockType lockType() default MyRedisLockType.RE_ENTRANT_LOCK;// 锁类型
 }
