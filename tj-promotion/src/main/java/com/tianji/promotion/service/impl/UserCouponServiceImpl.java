@@ -8,6 +8,7 @@ import com.tianji.common.exceptions.BizIllegalException;
 import com.tianji.common.utils.BeanUtils;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
+import com.tianji.promotion.constants.RedisConstants;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.ExchangeCode;
 import com.tianji.promotion.domain.pojo.UserCoupon;
@@ -20,8 +21,10 @@ import com.tianji.promotion.service.IExchangeCodeService;
 import com.tianji.promotion.service.IUserCouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.utils.CodeUtil;
+import com.tianji.promotion.utils.RedisLock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +48,7 @@ import java.util.stream.Collectors;
 public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCoupon> implements IUserCouponService {
     private final CouponMapper couponMapper;
     private final IExchangeCodeService exchangeCodeService;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 用户领取优惠券
@@ -66,9 +71,20 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         }
         // 4. 校验并且创建用户券
         Long userId = UserContext.getUser();
-        synchronized (userId.toString().intern()) {
+        // 4.1 创建锁对象
+        RedisLock redisLock = new RedisLock(RedisConstants.REDIS_LOCK + userId, redisTemplate);
+        // 4.2 获取锁
+        boolean suc = redisLock.tryLock(20, TimeUnit.SECONDS);
+        if (!suc) {
+            throw new BizIllegalException("请求太频繁");
+        }
+        // 4.3 获取成功，执行业务
+        try {
             IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
             userCouponService.checkAndCreateUserCoupon(coupon, userId);
+        } finally {
+            // 4.4 释放锁
+            redisLock.unlock();
         }
     }
 
