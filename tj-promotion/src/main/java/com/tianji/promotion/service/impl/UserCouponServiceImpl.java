@@ -23,6 +23,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.utils.CodeUtil;
 import com.tianji.promotion.utils.RedisLock;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -48,7 +50,7 @@ import java.util.stream.Collectors;
 public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCoupon> implements IUserCouponService {
     private final CouponMapper couponMapper;
     private final IExchangeCodeService exchangeCodeService;
-    private final StringRedisTemplate redisTemplate;
+    private final RedissonClient redissonClient;
 
     /**
      * 用户领取优惠券
@@ -72,9 +74,9 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         // 4. 校验并且创建用户券
         Long userId = UserContext.getUser();
         // 4.1 创建锁对象
-        RedisLock redisLock = new RedisLock(RedisConstants.REDIS_LOCK + userId, redisTemplate);
+        RLock redisLock = redissonClient.getLock(RedisConstants.REDIS_LOCK + userId);
         // 4.2 获取锁
-        boolean suc = redisLock.tryLock(20, TimeUnit.SECONDS);
+        boolean suc = redisLock.tryLock();// 默认30秒超时时间
         if (!suc) {
             throw new BizIllegalException("请求太频繁");
         }
