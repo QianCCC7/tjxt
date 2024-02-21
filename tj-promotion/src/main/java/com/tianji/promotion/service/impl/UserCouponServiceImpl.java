@@ -21,6 +21,7 @@ import com.tianji.promotion.service.IExchangeCodeService;
 import com.tianji.promotion.service.IUserCouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.promotion.utils.CodeUtil;
+import com.tianji.promotion.utils.MyRedisLock;
 import com.tianji.promotion.utils.RedisLock;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RLock;
@@ -73,23 +74,11 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         }
         // 4. 校验并且创建用户券
         Long userId = UserContext.getUser();
-        // 4.1 创建锁对象
-        RLock redisLock = redissonClient.getLock(RedisConstants.REDIS_LOCK + userId);
-        // 4.2 获取锁
-        boolean suc = redisLock.tryLock();// 默认30秒超时时间
-        if (!suc) {
-            throw new BizIllegalException("请求太频繁");
-        }
-        // 4.3 获取成功，执行业务
-        try {
-            IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
-            userCouponService.checkAndCreateUserCoupon(coupon, userId);
-        } finally {
-            // 4.4 释放锁
-            redisLock.unlock();
-        }
+        IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
+        userCouponService.checkAndCreateUserCoupon(coupon, userId);
     }
 
+    @MyRedisLock(name = "lock:coupon:uid:")
     @Transactional
     @Override
     public void checkAndCreateUserCoupon(Coupon coupon, Long userId) {
