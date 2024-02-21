@@ -78,7 +78,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         userCouponService.checkAndCreateUserCoupon(coupon, userId);
     }
 
-    @MyRedisLock(name = "lock:coupon:uid:")
+    @MyRedisLock(name = "lock:coupon:uid:#{userId}")
     @Transactional
     @Override
     public void checkAndCreateUserCoupon(Coupon coupon, Long userId) {
