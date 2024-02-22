@@ -4,6 +4,7 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
+import com.tianji.common.autoconfigure.redisson.annotations.Lock;
 import com.tianji.common.constants.MqConstants;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
@@ -92,9 +93,6 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         }
         // 5. 扣减库存
         redisTemplate.opsForHash().increment(PromotionConstants.COUPON_CACHE_KEY_PREFIX + couponId, "totalNum", -1);
-        // Long userId = UserContext.getUser();
-        // IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
-        // userCouponService.checkAndCreateUserCoupon(coupon, userId);
         // 6. 发送MQ消息
         UserCouponDTO userCouponDTO = new UserCouponDTO();
         userCouponDTO.setUserId(UserContext.getUser());
@@ -151,6 +149,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
      * 用户通过兑换码兑换优惠券
      */
     @Override
+    @Lock(name = "lock:coupon:#{T(com.tianji.common.utils.UserContext).getUser()}")
     @Transactional
     public void receiveCouponByExchangeCode(String code) {
         // 1. 校验并解析兑换码，解析出每个兑换码的唯一序列号
@@ -163,29 +162,31 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             throw new BizIllegalException("兑换码已被兑换");
         }
         try {
-            // 3. 查询兑换码
-            ExchangeCode exchangeCode = exchangeCodeService.getById(serialNum);
-            // 4. 是否存在
-            if (Objects.isNull(exchangeCode)) {
+            // 3. 查询兑换码对应的优惠券id
+            Long couponId = exchangeCodeService.exchangeTargetId(serialNum);
+            if (Objects.isNull(couponId)) {
                 throw new BizIllegalException("兑换码不存在");
             }
-            // 5. 校验并且创建用户券
+            Coupon coupon = queryCouponByCache(couponId);
+            // 4. 校验发放时间
             LocalDateTime now = LocalDateTime.now();
-            if (exchangeCode.getExpiredTime().isBefore(now)) {
-                throw new BizIllegalException("兑换码已过期");
+            if (now.isBefore(coupon.getIssueBeginTime()) || now.isAfter(coupon.getIssueEndTime())) {
+                throw new BadRequestException("优惠券发放结束或尚未开始");
             }
-            Coupon coupon = couponMapper.selectById(exchangeCode.getExchangeTargetId());
+            // 5. 校验每人限领数量
             Long userId = UserContext.getUser();
-            // synchronized (userId.toString().intern()) {
-            //     IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
-            //     userCouponService.checkAndCreateUserCoupon(coupon, userId);
-            // }
-            // 6. 更新兑换码状态(mysql+redis)
-            exchangeCodeService.lambdaUpdate()
-                    .set(ExchangeCode::getUserId, userId)
-                    .set(ExchangeCode::getStatus, ExchangeCodeStatus.USED)
-                    .eq(ExchangeCode::getId, serialNum)
-                    .update();
+            // 5.1 查询领取数量
+            String key = PromotionConstants.USER_COUPON_CACHE_KEY_PREFIX + couponId;
+            Long count = redisTemplate.opsForHash().increment(key, userId.toString(), 1);
+            // 5.2 校验限领数量
+            if (count > coupon.getUserLimit()) {
+                throw new BizIllegalException("超过领取数量");
+            }
+            // 6. 发送MQ消息通知
+            UserCouponDTO userCouponDTO = new UserCouponDTO();
+            userCouponDTO.setUserId(userId);
+            userCouponDTO.setCouponId(couponId);
+            mqHelper.send(MqConstants.Exchange.PROMOTION_EXCHANGE, MqConstants.Key.COUPON_RECEIVE, userCouponDTO);
         } catch (Exception e) {
             // 出现异常，将兑换标记标志位 false，因为在上面exchangeCodeService方法中标记为 true了
             exchangeCodeService.updateExchangeCodeMark(serialNum, false);

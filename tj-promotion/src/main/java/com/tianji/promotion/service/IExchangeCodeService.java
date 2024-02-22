@@ -22,4 +22,6 @@ public interface IExchangeCodeService extends IService<ExchangeCode> {
     PageDTO<ExchangeCodeVO> queryExchangeCodePage(CodeQuery codeQuery);
 
     boolean updateExchangeCodeMark(long serialNum, boolean b);
+
+    Long exchangeTargetId(long serialNum);
 }

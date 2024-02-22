@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static com.tianji.promotion.constants.PromotionConstants.COUPON_CODE_MAP_KEY;
 
@@ -35,11 +36,11 @@ import static com.tianji.promotion.constants.PromotionConstants.COUPON_CODE_MAP_
 @Service
 public class ExchangeCodeServiceImpl extends ServiceImpl<ExchangeCodeMapper, ExchangeCode> implements IExchangeCodeService {
     private BoundValueOperations<String, String> redisTemplate;
-    private final StringRedisTemplate bitMapRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     public ExchangeCodeServiceImpl(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate.boundValueOps(PromotionConstants.COUPON_CODE_SERIAL_KEY);
-        this.bitMapRedisTemplate = redisTemplate;
+        this.stringRedisTemplate = redisTemplate;
     }
 
     /**
@@ -66,6 +67,9 @@ public class ExchangeCodeServiceImpl extends ServiceImpl<ExchangeCodeMapper, Exc
         }
         // 4. 写入数据库
         saveBatch(list);
+        // 5. 生成兑换码时，将优惠券及对应兑换码序列号的最大值缓存到Redis中(member:couponId,score:兑换码的最大序列号)
+        stringRedisTemplate.opsForZSet()
+                .add(PromotionConstants.COUPON_RANGE_KEY, coupon.getId().toString(), maxSerialNum);
     }
 
     /**
@@ -92,7 +96,22 @@ public class ExchangeCodeServiceImpl extends ServiceImpl<ExchangeCodeMapper, Exc
      */
     @Override
     public boolean updateExchangeCodeMark(long serialNum, boolean mark) {
-        Boolean setMark = bitMapRedisTemplate.opsForValue().setBit(COUPON_CODE_MAP_KEY, serialNum, mark);
+        Boolean setMark = stringRedisTemplate.opsForValue().setBit(COUPON_CODE_MAP_KEY, serialNum, mark);
         return setMark != null && setMark;
+    }
+
+    /**
+     * 查询指定序列号(兑换码)对应的优惠券 id
+     */
+    @Override
+    public Long exchangeTargetId(long serialNum) {
+        Set<String> set = stringRedisTemplate.opsForZSet()
+                .rangeByScore(PromotionConstants.COUPON_RANGE_KEY, serialNum, serialNum + 5000,
+                        0L, 1L);
+        if (CollUtils.isEmpty(set)) {
+            return null;
+        }
+        String next = set.iterator().next();
+        return Long.parseLong(next);
     }
 }

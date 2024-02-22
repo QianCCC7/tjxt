@@ -20,4 +20,9 @@ public class PromotionConstants {
      * 缓存的用户券信息 key前缀
      */
     public final static String USER_COUPON_CACHE_KEY_PREFIX = "prs:user:coupon:";
+
+    /**
+     * 兑换码序列号
+     */
+    public final static String COUPON_RANGE_KEY = "coupon:code:range";
 }
