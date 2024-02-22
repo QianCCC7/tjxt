@@ -63,6 +63,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
     /**
      * 用户领取优惠券
      */
+    @MyRedisLock(name = "lock:coupon:#{couponId}")
     @Override
     public void receiveCoupon(Long couponId) {
         // 1. 查询优惠券
@@ -116,26 +117,20 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         return BeanUtils.mapToBean(entries, Coupon.class, false, CopyOptions.create());
     }
 
-    @MyRedisLock(name = "lock:coupon:uid:#{userId}")
     @Transactional
     @Override
-    public void checkAndCreateUserCoupon(Coupon coupon, Long userId) {
-        // 注意这里要转为字符串，因为 userId可能是变量，转为字符串变为常量
-        // 1. 校验是否超过限领数
-        // 1.1 统计当前用户对当前优惠券已经领取的数量
-        Integer count = lambdaQuery()
-                .eq(UserCoupon::getUserId, userId)
-                .eq(UserCoupon::getCouponId, coupon.getId())
-                .count();
-        // 1.2 判断是否超限
-        if (Objects.nonNull(count) && count >= coupon.getUserLimit()) {
-            throw new BadRequestException("已超过领取该优惠券上限");
+    public void checkAndCreateUserCoupon(UserCouponDTO ucd) {
+        // 1. 查询优惠券
+        Coupon coupon = couponMapper.selectById(ucd.getCouponId());
+        if (coupon == null) {
+            throw new BizIllegalException("优惠券不存在");
         }
         // 2. 更新优惠券发放数量+1
         int sucRow = couponMapper.incrIssueNum(coupon.getId());
         if (sucRow == 0) {
             throw new BizIllegalException("优惠券库存不足");
         }
+        Long userId = ucd.getUserId();
         // 3. 写入数据库
         UserCoupon userCoupon = new UserCoupon();
         userCoupon.setUserId(userId);
@@ -181,10 +176,10 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             }
             Coupon coupon = couponMapper.selectById(exchangeCode.getExchangeTargetId());
             Long userId = UserContext.getUser();
-            synchronized (userId.toString().intern()) {
-                IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
-                userCouponService.checkAndCreateUserCoupon(coupon, userId);
-            }
+            // synchronized (userId.toString().intern()) {
+            //     IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
+            //     userCouponService.checkAndCreateUserCoupon(coupon, userId);
+            // }
             // 6. 更新兑换码状态(mysql+redis)
             exchangeCodeService.lambdaUpdate()
                     .set(ExchangeCode::getUserId, userId)

@@ -44,3 +44,7 @@ tj:
       enable: true
       excludeLoginPaths:
         - /coupons/list
+  mq:
+    listener:
+      retry:
+        stateless: false
