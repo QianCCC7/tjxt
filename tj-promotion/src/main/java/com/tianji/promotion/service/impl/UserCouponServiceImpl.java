@@ -98,7 +98,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         if (sucRow == 0) {
             throw new BizIllegalException("优惠券库存不足");
         }
-        // 3. 更新数据库
+        // 3. 写入数据库
         UserCoupon userCoupon = new UserCoupon();
         userCoupon.setUserId(userId);
         userCoupon.setCouponId(coupon.getId());

@@ -37,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.tianji.promotion.constants.PromotionConstants.COUPON_CACHE_KEY_PREFIX;
 import static com.tianji.promotion.constants.PromotionConstants.COUPON_CODE_SERIAL_KEY;
 
 /**
@@ -106,6 +107,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
      * 发放优惠券
      */
     @Override
+    @Transactional
     public void grantCoupon(CouponIssueFormDTO couponIssueFormDTO) {
         // 1. 查询优惠券
         Coupon coupon = getById(couponIssueFormDTO.getId());
@@ -133,11 +135,32 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         }
         // 4.3 写入数据库
         updateById(c);
+        // 4.4 添加缓存
+        if (isInstantly) {// 是立即发放的优惠券才写入缓存
+            coupon.setIssueBeginTime(c.getIssueBeginTime());
+            coupon.setIssueEndTime(c.getIssueEndTime());
+            cacheCouponInfo(coupon);
+        }
         // 5. 判断是否需要生成兑换码
         if (coupon.getObtainWay() == ObtainType.ISSUE && coupon.getStatus() == CouponStatus.DRAFT) {
             coupon.setIssueEndTime(c.getIssueEndTime());
             exchangeCodeService.asyncGenerateExchangeCode(coupon);
         }
+    }
+
+    /**
+     * 将优惠券信息写入缓存
+     */
+    private void cacheCouponInfo(Coupon coupon) {
+        // 1. 组装数据
+        Map<String, String> map = new HashMap<>(4);
+        map.put("issueBeginTime", String.valueOf(DateUtils.toEpochMilli(coupon.getIssueBeginTime())));
+        map.put("issueEndTime", String.valueOf(DateUtils.toEpochMilli(coupon.getIssueEndTime())));
+        map.put("totalNum", String.valueOf(coupon.getTotalNum()));
+        map.put("userLimit", String.valueOf(coupon.getUserLimit()));
+
+        // 2. 写入缓存
+        redisTemplate.opsForHash().putAll(COUPON_CACHE_KEY_PREFIX + coupon.getId(), map);
     }
 
     /**
@@ -271,6 +294,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
      * 暂停发布优惠券
      */
     @Override
+    @Transactional
     public void pauseIssueCoupon(Long id) {
         // 1.查询优惠券
         Coupon coupon = getById(id);
@@ -291,7 +315,7 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
             log.error("重复暂停发布优惠券{}", id);
         }
         // 3.删除缓存
-        redisTemplate.delete(COUPON_CODE_SERIAL_KEY + id);
+        redisTemplate.delete(COUPON_CACHE_KEY_PREFIX + id);
     }
 
     /**

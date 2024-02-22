@@ -10,4 +10,14 @@ public class PromotionConstants {
      * 校验兑换码是否使用过的 key
      */
     public final static String COUPON_CODE_MAP_KEY = "coupon:code:map";
+
+    /**
+     * 缓存的优惠券信息 key前缀
+     */
+    public final static String COUPON_CACHE_KEY_PREFIX = "prs:coupon:";
+
+    /**
+     * 缓存的用户券信息 key前缀
+     */
+    public final static String USER_COUPON_CACHE_KEY_PREFIX = "prs:user:coupon:";
 }
