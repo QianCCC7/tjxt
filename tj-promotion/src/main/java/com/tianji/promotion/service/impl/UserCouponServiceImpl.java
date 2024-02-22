@@ -115,6 +115,9 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         return BeanUtils.mapToBean(entries, Coupon.class, false, CopyOptions.create());
     }
 
+    /**
+     * 更新优惠券数量以及写入用户券至数据库
+     */
     @Transactional
     @Override
     public void checkAndCreateUserCoupon(UserCouponDTO ucd) {

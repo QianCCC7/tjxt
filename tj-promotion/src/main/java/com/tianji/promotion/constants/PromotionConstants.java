@@ -22,7 +22,7 @@ public class PromotionConstants {
     public final static String USER_COUPON_CACHE_KEY_PREFIX = "prs:user:coupon:";
 
     /**
-     * 兑换码序列号
+     * 兑换码序列号，便于找到对应优惠券 id
      */
     public final static String COUPON_RANGE_KEY = "coupon:code:range";
 }
