@@ -1,14 +1,19 @@
 package com.tianji.promotion.service.impl;
 
+import cn.hutool.core.bean.copier.CopyOptions;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
+import com.tianji.common.constants.MqConstants;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.exceptions.BizIllegalException;
 import com.tianji.common.utils.BeanUtils;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
+import com.tianji.promotion.constants.PromotionConstants;
 import com.tianji.promotion.constants.RedisConstants;
+import com.tianji.promotion.domain.dto.UserCouponDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.ExchangeCode;
 import com.tianji.promotion.domain.pojo.UserCoupon;
@@ -33,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +57,8 @@ import java.util.stream.Collectors;
 public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCoupon> implements IUserCouponService {
     private final CouponMapper couponMapper;
     private final IExchangeCodeService exchangeCodeService;
-    private final RedissonClient redissonClient;
+    private final StringRedisTemplate redisTemplate;
+    private final RabbitMqHelper mqHelper;
 
     /**
      * 用户领取优惠券
@@ -59,7 +66,8 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
     @Override
     public void receiveCoupon(Long couponId) {
         // 1. 查询优惠券
-        Coupon coupon = couponMapper.selectById(couponId);
+        // Coupon coupon = couponMapper.selectById(couponId);
+        Coupon coupon = queryCouponByCache(couponId);
         if (Objects.isNull(coupon)) {
             throw new BadRequestException("优惠券不存在");
         }
@@ -69,13 +77,43 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             throw new BadRequestException("优惠券发放结束或尚未开始");
         }
         // 3. 校验库存
-        if (coupon.getIssueNum() >= coupon.getTotalNum()) {
+        // if (coupon.getIssueNum() >= coupon.getTotalNum()) {
+        if (coupon.getTotalNum() <= 0) {// redis中存储的totalNum为剩余库存
             throw new BadRequestException("优惠券库存不足");
         }
         // 4. 校验并且创建用户券
-        Long userId = UserContext.getUser();
-        IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
-        userCouponService.checkAndCreateUserCoupon(coupon, userId);
+        // 4.1 查询领取数量
+        String key = PromotionConstants.USER_COUPON_CACHE_KEY_PREFIX + couponId;
+        Long count = redisTemplate.opsForHash().increment(key, UserContext.getUser().toString(), 1);
+        // 4.2 校验限领数量
+        if (count > coupon.getUserLimit()) {
+            throw new BizIllegalException("超过领取数量");
+        }
+        // 5. 扣减库存
+        redisTemplate.opsForHash().increment(PromotionConstants.COUPON_CACHE_KEY_PREFIX + couponId, "totalNum", -1);
+        // Long userId = UserContext.getUser();
+        // IUserCouponService userCouponService = (IUserCouponService) AopContext.currentProxy();
+        // userCouponService.checkAndCreateUserCoupon(coupon, userId);
+        // 6. 发送MQ消息
+        UserCouponDTO userCouponDTO = new UserCouponDTO();
+        userCouponDTO.setUserId(UserContext.getUser());
+        userCouponDTO.setCouponId(couponId);
+        mqHelper.send(MqConstants.Exchange.PROMOTION_EXCHANGE, MqConstants.Key.COUPON_RECEIVE, userCouponDTO);
+    }
+
+    /**
+     * 从缓存查询优惠券
+     */
+    private Coupon queryCouponByCache(Long couponId) {
+        // 1. 准备key
+        String key = PromotionConstants.COUPON_CACHE_KEY_PREFIX + couponId;
+        // 2. 查询数据
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
+        if (CollUtils.isEmpty(entries)) {
+            return null;
+        }
+        // 3. 数据反序列化
+        return BeanUtils.mapToBean(entries, Coupon.class, false, CopyOptions.create());
     }
 
     @MyRedisLock(name = "lock:coupon:uid:#{userId}")
