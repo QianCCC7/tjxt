@@ -13,10 +13,10 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum DiscountType implements BaseEnum {
-    PER_PRICE_DISCOUNT(1, "每满减"),
-    RATE_DISCOUNT(2, "折扣"),
     NO_THRESHOLD(3, "无门槛"),
+    PER_PRICE_DISCOUNT(1, "每满减"),
     PRICE_DISCOUNT(4, "满减"),
+    RATE_DISCOUNT(2, "折扣"),
     ;
     @JsonValue
     @EnumValue
