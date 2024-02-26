@@ -5,10 +5,7 @@ import com.tianji.api.promotion.CouponDiscountDTO;
 import com.tianji.api.promotion.OrderCouponDTO;
 import com.tianji.api.promotion.OrderCourseDTO;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -26,4 +23,7 @@ public interface PromotionClient {
 
     @PutMapping("/user-coupons/refund")
     void refundCoupon(@RequestParam("couponIds") List<Long> userCouponIds);
+
+    @GetMapping("/rules")
+    List<String> queryDiscountRules(@RequestParam("couponIds") List<Long> userCouponIds);
 }

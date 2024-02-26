@@ -14,27 +14,21 @@ import com.tianji.common.utils.BeanUtils;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
 import com.tianji.promotion.constants.PromotionConstants;
-import com.tianji.promotion.constants.RedisConstants;
 import com.tianji.promotion.domain.dto.UserCouponDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
-import com.tianji.promotion.domain.pojo.ExchangeCode;
 import com.tianji.promotion.domain.pojo.UserCoupon;
 import com.tianji.promotion.domain.query.UserCouponQuery;
 import com.tianji.promotion.domain.vo.CouponVO;
-import com.tianji.promotion.enums.ExchangeCodeStatus;
 import com.tianji.promotion.enums.UserCouponStatus;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.mapper.UserCouponMapper;
 import com.tianji.promotion.service.IExchangeCodeService;
 import com.tianji.promotion.service.IUserCouponService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.tianji.promotion.strategy.discount.DiscountStrategy;
 import com.tianji.promotion.utils.CodeUtil;
 import com.tianji.promotion.utils.MyRedisLock;
-import com.tianji.promotion.utils.RedisLock;
 import lombok.RequiredArgsConstructor;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -302,5 +295,21 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         if (sucRow < 1) {
             throw new DbException("更新已使用优惠券的数量失败");
         }
+    }
+
+    /**
+     *在用户中心查询订单详情的时候，需要展示订单使用的优惠券信息
+     */
+    @Override
+    public List<String> queryDiscountRules(List<Long> userCouponIds) {
+        // 1. 查询优惠券
+        List<Coupon> couponList = baseMapper.queryCouponsByUserCouponIds(userCouponIds, UserCouponStatus.USED);
+        if (CollUtils.isEmpty(couponList)) {
+            return CollUtils.emptyList();
+        }
+        // 2. 拼接优惠券规则
+        return couponList.stream()
+                .map(coupon -> DiscountStrategy.getDiscount(coupon.getDiscountType()).getRule(coupon))
+                .collect(Collectors.toList());
     }
 }

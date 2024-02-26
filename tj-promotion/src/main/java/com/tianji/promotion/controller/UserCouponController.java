@@ -73,4 +73,10 @@ public class UserCouponController {
     public void refundCoupon(@RequestParam("couponIds") List<Long> userCouponIds) {
         userCouponService.refundCoupon(userCouponIds);
     }
+
+    @ApiOperation("查询已使用的优惠券规则信息")
+    @GetMapping("/rules")
+    public List<String> queryDiscountRules(@RequestParam("couponIds") List<Long> userCouponIds) {
+        return userCouponService.queryDiscountRules(userCouponIds);
+    }
 }
