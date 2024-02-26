@@ -10,4 +10,16 @@
         and uc.status = 1
         and uc.user_id = #{userId}
     </select>
+
+    <select id="queryCouponsByUserCouponIds" resultType="com.tianji.promotion.domain.pojo.Coupon">
+        select c.id, c.discount_type, c.`specific`, c.discount_value,
+               c.threshold_amount, c.max_discount_amount, uc.id as creater
+        from coupon c, user_coupon uc
+        where uc.coupon_id = c.id
+        and uc.status = #{status}
+        and uc.id in 
+        <foreach collection="userCouponIds" separator="," item="id" open="(" close=")">
+            #{id}
+        </foreach>
+    </select>
 </mapper>

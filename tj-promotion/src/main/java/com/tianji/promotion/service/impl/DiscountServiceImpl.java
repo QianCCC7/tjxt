@@ -4,8 +4,10 @@ import com.tianji.api.promotion.CouponDiscountDTO;
 import com.tianji.api.promotion.OrderCourseDTO;
 import com.tianji.common.utils.CollUtils;
 import com.tianji.common.utils.UserContext;
+import com.tianji.api.promotion.OrderCouponDTO;
 import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.CouponScope;
+import com.tianji.promotion.enums.UserCouponStatus;
 import com.tianji.promotion.mapper.UserCouponMapper;
 import com.tianji.promotion.service.ICouponScopeService;
 import com.tianji.promotion.service.IDiscountService;
@@ -158,6 +160,7 @@ public class DiscountServiceImpl implements IDiscountService {
             dto.getIds().add(coupon.getId());
             dto.getRules().add(discount.getRule(coupon));
             dto.setDiscountAmount(discountAmount + dto.getDiscountAmount());
+            dto.setDiscountDetail(detailMap);
         }
         return dto;
     }
@@ -222,5 +225,25 @@ public class DiscountServiceImpl implements IDiscountService {
         return intersection.stream()
                 .sorted(Comparator.comparingInt(CouponDiscountDTO::getDiscountAmount).reversed())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 根据券方案计算订单优惠明细
+     */
+    @Override
+    public CouponDiscountDTO queryDiscountDetailByOrder(OrderCouponDTO orderCouponDTO) {
+        // 1. 查询用户券信息
+        List<Long> userCouponIds = orderCouponDTO.getUserCouponIds();
+        List<Coupon> couponList = userCouponMapper.queryCouponsByUserCouponIds(userCouponIds, UserCouponStatus.UNUSED);
+        if (CollUtils.isEmpty(couponList)) {
+            return null;
+        }
+        // 2. 找出每个优惠券可用的所有课程
+        Map<Coupon, List<OrderCourseDTO>> availableCouponMap = findAvailableCoupon(couponList, orderCouponDTO.getCourseList());
+        if (CollUtils.isEmpty(availableCouponMap)) {
+            return null;
+        }
+        // 3. 查询优惠规则
+        return calculateDiscountSolution(availableCouponMap, orderCouponDTO.getCourseList(), couponList);
     }
 }
