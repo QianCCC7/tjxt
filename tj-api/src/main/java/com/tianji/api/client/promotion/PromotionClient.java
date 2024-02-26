@@ -23,4 +23,7 @@ public interface PromotionClient {
 
     @PutMapping("/user-coupons/use")
     void writeOffCoupon(@RequestParam("couponIds") List<Long> userCouponIds);
+
+    @PutMapping("/user-coupons/refund")
+    void refundCoupon(@RequestParam("couponIds") List<Long> userCouponIds);
 }

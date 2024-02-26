@@ -266,4 +266,41 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             throw new DbException("更新已使用优惠券的数量失败");
         }
     }
+
+    /**
+     * 退还优惠券：当用户取消订单，或者订单被超时取消时，如果用户使用了优惠券，则需要去退还优惠券
+     */
+    @Override
+    public void refundCoupon(List<Long> userCouponIds) {
+        // 1. 查询优惠券
+        List<UserCoupon> userCouponList = listByIds(userCouponIds);
+        if (CollUtils.isEmpty(userCouponList)) {
+            return;
+        }
+        // 2. 处理数据
+        userCouponList = userCouponList.stream()
+                // 2.1 过滤无效券
+                .filter(userCoupon -> Objects.nonNull(userCoupon) && userCoupon.getStatus() == UserCouponStatus.USED)
+                // 2.3 更新用户券的状态
+                .map(userCoupon -> {
+                    UserCoupon uc = new UserCoupon();
+                    uc.setId(userCoupon.getId());
+                    // 2.4 判断用户券是否过期
+                    LocalDateTime now = LocalDateTime.now();
+                    uc.setStatus(now.isAfter(userCoupon.getTermEndTime()) ? UserCouponStatus.EXPIRED : UserCouponStatus.UNUSED);
+                    return uc;
+                })
+                .collect(Collectors.toList());
+        // 3. 核销优惠券
+        boolean suc = updateBatchById(userCouponList);
+        if (!suc) {
+            return;
+        }
+        // 4. 更新已使用优惠券的数量
+        List<Long> userCouponIdList = userCouponList.stream().map(UserCoupon::getCouponId).collect(Collectors.toList());
+        int sucRow = couponMapper.incrUserNum(userCouponIdList, -1);
+        if (sucRow < 1) {
+            throw new DbException("更新已使用优惠券的数量失败");
+        }
+    }
 }

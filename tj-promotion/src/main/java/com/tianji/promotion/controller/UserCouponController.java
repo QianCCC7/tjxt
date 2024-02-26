@@ -68,4 +68,9 @@ public class UserCouponController {
         userCouponService.writeOffCoupon(userCouponIds);
     }
 
+    @ApiOperation("退还优惠券")
+    @PutMapping("/refund")
+    public void refundCoupon(@RequestParam("couponIds") List<Long> userCouponIds) {
+        userCouponService.refundCoupon(userCouponIds);
+    }
 }

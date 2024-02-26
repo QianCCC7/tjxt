@@ -299,6 +299,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
         // 5.更新订单条目的状态
         detailService.updateStatusByOrderId(orderId, OrderStatus.CLOSED.getValue());
+        // 6. 退换优惠券
+        promotionClient.refundCoupon(order.getCouponIds());
     }
 
     @Override

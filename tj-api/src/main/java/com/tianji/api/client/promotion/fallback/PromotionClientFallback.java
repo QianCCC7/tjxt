@@ -33,6 +33,11 @@ public class PromotionClientFallback implements FallbackFactory<PromotionClient>
                 throw new BizIllegalException(500, "核销优惠券异常", cause);
             }
 
+            @Override
+            public void refundCoupon(List<Long> userCouponIds) {
+                throw new BizIllegalException(500, "退还优惠券异常", cause);
+            }
+
         };
     }
 }
