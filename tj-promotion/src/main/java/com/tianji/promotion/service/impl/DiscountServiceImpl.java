@@ -93,7 +93,9 @@ public class DiscountServiceImpl implements IDiscountService {
             log.error("优惠方案计算被中断，{}", e.getMessage());
         }
         // 5. 筛选最优解
-        return list;
+        // 5.1 用券相同时，优惠金额最高的方案
+        // 5.2 优惠金额相同时，用券最少的方案
+        return findBestSolution(list);
     }
 
     /**
@@ -181,5 +183,44 @@ public class DiscountServiceImpl implements IDiscountService {
             // 2. 更新当前课程优惠明细
             detailMap.put(course.getId(), detailMap.getOrDefault(course.getId(), 0) + discount);
         }
+    }
+
+    /**
+     * 计算最优解
+     */
+    private List<CouponDiscountDTO> findBestSolution(List<CouponDiscountDTO> list) {
+        // 1. 准备map，存储最优解
+        Map<String, CouponDiscountDTO> moreDiscountMap = new HashMap<>();
+        Map<Integer, CouponDiscountDTO> lessCouponMap = new HashMap<>();
+        // 2. 遍历，查找最优解
+        for (CouponDiscountDTO solution : list) {
+            // 2.1 计算 id组合
+            String ids = solution.getIds().stream()
+                    .sorted(Long::compare)
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+            // 2.2 比较用券相同时，优惠金额是否最大
+            CouponDiscountDTO bestSolution = moreDiscountMap.get(ids);
+            if (Objects.nonNull(bestSolution) && bestSolution.getDiscountAmount() > solution.getDiscountAmount()) {
+                // 当前优惠券金额少，跳过
+                continue;
+            }
+            // 2.3 金额相同时，是否使用的券最少
+            bestSolution = lessCouponMap.get(solution.getDiscountAmount());
+            int size = solution.getIds().size();// 存储单券
+            if (size > 1 && Objects.nonNull(bestSolution) && bestSolution.getIds().size() <= size) {
+                // 当前方案消耗更多券，跳过
+                continue;
+            }
+            // 2.4 更新最优解
+            moreDiscountMap.put(ids, solution);
+            lessCouponMap.put(solution.getDiscountAmount(), solution);
+        }
+        // 3. 求交集
+        Collection<CouponDiscountDTO> intersection = CollUtils.intersection(moreDiscountMap.values(), lessCouponMap.values());
+        // 4. 排序（按优惠金额降序）
+        return intersection.stream()
+                .sorted(Comparator.comparingInt(CouponDiscountDTO::getDiscountAmount).reversed())
+                .collect(Collectors.toList());
     }
 }
