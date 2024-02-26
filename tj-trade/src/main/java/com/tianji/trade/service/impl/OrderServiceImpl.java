@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tianji.api.client.course.CourseClient;
+import com.tianji.api.client.promotion.PromotionClient;
 import com.tianji.api.constants.CourseStatus;
 import com.tianji.api.dto.course.CourseSimpleInfoDTO;
 import com.tianji.api.dto.trade.OrderBasicDTO;
+import com.tianji.api.promotion.CouponDiscountDTO;
+import com.tianji.api.promotion.OrderCourseDTO;
 import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
 import com.tianji.common.constants.MqConstants;
 import com.tianji.common.domain.dto.PageDTO;
@@ -62,6 +65,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final ICartService cartService;
     private final TradeProperties tradeProperties;
     private final RabbitMqHelper rabbitMqHelper;
+    private final PromotionClient promotionClient;
 
     @Override
     @Transactional
@@ -193,14 +197,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 2.计算总价
         int total = courseInfos.stream().mapToInt(CourseSimpleInfoDTO::getPrice).sum();
         // TODO 3.计算折扣
-        int discountAmount = 0;
+        List<OrderCourseDTO> orderCourseDTOList = courseInfos.stream()
+                        .map(csi -> new OrderCourseDTO().setId(csi.getId()).setCateId(csi.getThirdCateId())
+                                .setPrice(csi.getPrice()))
+                                .collect(Collectors.toList());
+        List<CouponDiscountDTO> discountSolution = promotionClient.findDiscountSolution(orderCourseDTOList);
         // 4.生成订单id
         long orderId = IdWorker.getId();
         // 5.组织返回
         OrderConfirmVO vo = new OrderConfirmVO();
         vo.setOrderId(orderId);
         vo.setTotalAmount(total);
-        vo.setDiscountAmount(discountAmount);
+        vo.setDiscountDTOList(discountSolution);
         vo.setCourses(courses);
         return vo;
     }

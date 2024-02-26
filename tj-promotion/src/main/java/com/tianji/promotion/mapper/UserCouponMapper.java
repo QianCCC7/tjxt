@@ -1,7 +1,11 @@
 package com.tianji.promotion.mapper;
 
+import com.tianji.promotion.domain.pojo.Coupon;
 import com.tianji.promotion.domain.pojo.UserCoupon;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * <p>
@@ -13,4 +17,5 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface UserCouponMapper extends BaseMapper<UserCoupon> {
 
+    List<Coupon> queryMyCoupon(@Param("userId") Long userId);
 }

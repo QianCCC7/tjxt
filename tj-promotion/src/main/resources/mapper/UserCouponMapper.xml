@@ -2,4 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.tianji.promotion.mapper.UserCouponMapper">
 
+    <select id="queryMyCoupon" resultType="com.tianji.promotion.domain.pojo.Coupon">
+        select coupon.id, coupon.discount_type, coupon.`specific`, coupon.discount_value,
+               coupon.threshold_amount, coupon.max_discount_amount, uc.id as creater
+        from user_coupon uc, coupon
+        where uc.coupon_id = coupon.id
+        and uc.status = 1
+        and uc.user_id = #{userId}
+    </select>
 </mapper>
