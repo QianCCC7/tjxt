@@ -13,16 +13,23 @@ import com.tianji.promotion.strategy.discount.Discount;
 import com.tianji.promotion.strategy.discount.DiscountStrategy;
 import com.tianji.promotion.utils.PermuteUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DiscountServiceImpl implements IDiscountService {
     private final UserCouponMapper userCouponMapper;
     private final ICouponScopeService couponScopeService;
+    private final Executor calculateDiscountExecutor;
 
     /**
      * 查询我的优惠券可用方案
@@ -64,11 +71,26 @@ public class DiscountServiceImpl implements IDiscountService {
             solutions.add(List.of(coupon));
         }
         // 4. 并发计算组合中的最优方案
-        // 4.1 计算每种方案组合的优惠明细
-        List<CouponDiscountDTO> list = new ArrayList<>(solutions.size());
+        // 4.1 定义闭锁
+        CountDownLatch countDownLatch = new CountDownLatch(solutions.size());
+        List<CouponDiscountDTO> list = Collections.synchronizedList(new ArrayList<>(solutions.size()));
         // 枚举每种组合
         for (List<Coupon> solution : solutions) {
+            // 4.2 异步计算每种方案组合的优惠明细
+            CompletableFuture
+                    .supplyAsync(() -> calculateDiscountSolution(availableCouponMap, orderCourseDTOList, solution),
+                            calculateDiscountExecutor)
+                            .thenAccept(dto -> {
+                                list.add(dto);// 接收返回结果
+                                countDownLatch.countDown();// 提交任务
+                            });
             list.add(calculateDiscountSolution(availableCouponMap, orderCourseDTOList, solution));
+        }
+        // 4.3 等待运算结果
+        try {
+            countDownLatch.await(1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error("优惠方案计算被中断，{}", e.getMessage());
         }
         // 5. 筛选最优解
         return list;
